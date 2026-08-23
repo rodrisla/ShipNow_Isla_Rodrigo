@@ -5,10 +5,10 @@ const app = express();
 app.use(express.json());
 
 app.get('/', (req, res) => {
-  res.send('Hello, World!');
+  res.status(200).json({
+    status: 'success',
+    message: 'ShipNow funcionando'
+  });
 });
 
-app.listen(3000, () => {
-  console.log('Server corriendo en el puerto 3000');
-});
-
+export default app;
