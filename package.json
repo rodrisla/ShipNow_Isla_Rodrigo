@@ -1,0 +1,20 @@
+{
+  "name": "shipnow_isla_rodrigo",
+  "version": "1.0.0",
+  "description": "",
+  "homepage": "https://github.com/rodrisla/ShipNow_Isla_Rodrigo#readme",
+  "bugs": {
+    "url": "https://github.com/rodrisla/ShipNow_Isla_Rodrigo/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rodrisla/ShipNow_Isla_Rodrigo.git"
+  },
+  "license": "(ISC)",
+  "author": "Rodrigo Isla",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
