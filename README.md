@@ -1,8 +1,15 @@
-# ShipNow
+# ShipNow - Pre-entrega Módulo 2
 
-ShipNow es una API realizada para el curso final de Backend.
+ShipNow es una API realizada para el curso de Backend.
 
-El objetivo de la pre-entrega 1 es practicar una arquitectura por capas, separando las rutas, los controladores, la lógica de negocio y el acceso a MongoDB.
+En esta pre-entrega agregué un módulo de mocking para generar usuarios, repartidores, pedidos y entregas de prueba utilizando Faker.
+
+## Versiones del proyecto
+
+Cada pre-entrega se encuentra separada en su propia rama:
+
+- [Pre-entrega 1](https://github.com/rodrisla/ShipNow_Isla_Rodrigo/tree/pre-entrega-1)
+- [Pre-entrega 2](https://github.com/rodrisla/ShipNow_Isla_Rodrigo/tree/pre-entrega-2) - Rama actual
 
 ## Tecnologías utilizadas
 
@@ -10,17 +17,18 @@ El objetivo de la pre-entrega 1 es practicar una arquitectura por capas, separan
 - Express
 - MongoDB
 - Mongoose
+- Faker
 - dotenv
 
 ## Cómo ejecutar el proyecto
 
-Primero hay que clonar el repositorio:
+Clonar la rama de la pre-entrega 2:
 
 ```bash
-git clone https://github.com/rodrisla/ShipNow_Isla_Rodrigo.git
+git clone --branch pre-entrega-2 https://github.com/rodrisla/ShipNow_Isla_Rodrigo.git
 ```
 
-Entrar en la carpeta del proyecto:
+Entrar en la carpeta:
 
 ```bash
 cd ShipNow_Isla_Rodrigo
@@ -32,9 +40,7 @@ Instalar las dependencias:
 npm install
 ```
 
-Después hay que crear un archivo `.env` usando como referencia el archivo `.env.example`.
-
-El archivo `.env` debe tener:
+Crear un archivo `.env` tomando como referencia `.env.example`:
 
 ```env
 PORT=8080
@@ -42,70 +48,181 @@ MONGODB_URI=URI_DE_MONGODB
 NODE_ENV=development
 ```
 
-Para ejecutar el proyecto en modo desarrollo:
+Ejecutar el proyecto:
 
 ```bash
 npm run dev
 ```
 
-También se puede iniciar normalmente con:
+## Módulo de mocks
 
-```bash
-npm start
+Las rutas de mocks se encuentran bajo:
+
+```text
+/api/mocks
 ```
 
-## Organización del proyecto
+Estas rutas están disponibles solamente cuando la aplicación se ejecuta con:
 
-El proyecto está separado en las siguientes capas:
+```env
+NODE_ENV=development
+```
 
-- **Routes:** contienen las rutas de la API.
-- **Controllers:** reciben las peticiones y envían las respuestas.
-- **Services:** contienen la lógica de negocio.
-- **Repositories:** realizan las consultas a MongoDB.
-- **Models:** definen los esquemas de productos y usuarios.
+En otro entorno, las rutas de mocks responden `404`.
+
+Los endpoints se pueden probar desde Postman.
+
+## Generar usuarios sin guardar
+
+Configurar en Postman:
+
+```http
+GET http://localhost:8080/api/mocks/mockingusers?qty=10
+```
+
+Este endpoint genera usuarios falsos sin guardarlos en MongoDB.
+
+Los roles `customer` y `driver` se eligen de manera aleatoria y se toman desde las constantes del proyecto.
+
+Las contraseñas se generan porque forman parte del modelo, pero no se muestran en la respuesta.
+
+Si no se envía `qty`, se generan 10 usuarios. Se aceptan cantidades entre 1 y 100.
+
+## Generar pedidos sin guardar
+
+Configurar en Postman:
+
+```http
+GET http://localhost:8080/api/mocks/mockingorders?qty=10
+```
+
+Este endpoint genera pedidos falsos sin guardarlos en MongoDB.
+
+Cada pedido contiene:
+
+- ID de un usuario simulado.
+- Dirección de entrega.
+- Estado válido.
+- Prioridad válida.
+
+Los estados y prioridades se toman desde las constantes del proyecto.
+
+## Insertar datos de prueba
+
+Configurar en Postman:
+
+```http
+POST http://localhost:8080/api/mocks/generateData
+```
+
+Seleccionar `Body`, luego `raw` y elegir el formato `JSON`.
+
+Ejemplo:
+
+```json
+{
+  "users": 10,
+  "orders": 20,
+  "deliveries": 5
+}
+```
+
+Este endpoint genera los datos y los inserta en MongoDB respetando el siguiente orden:
+
+1. Usuarios.
+2. Pedidos relacionados con usuarios.
+3. Entregas relacionadas con pedidos y repartidores.
+
+Ejemplo de respuesta:
+
+```json
+{
+  "status": "success",
+  "data": {
+    "inserted": {
+      "users": 10,
+      "customers": 6,
+      "drivers": 4,
+      "orders": 20,
+      "deliveries": 5
+    }
+  }
+}
+```
+
+La cantidad de clientes y repartidores puede variar porque los roles se generan de forma aleatoria.
+
+Los repartidores también son usuarios, pero tienen el rol `driver`. Por eso, la cantidad indicada en `users` es el total entre clientes y repartidores.
+
+Cada vez que se ejecuta este endpoint se agregan nuevos registros de prueba.
+
+## Validaciones
+
+Las cantidades enviadas deben:
+
+- Ser números enteros entre 0 y 100.
+- Tener al menos un valor mayor a cero.
+- Incluir usuarios si se generan pedidos.
+- Incluir pedidos si se generan entregas.
+- No pedir más entregas que pedidos.
+- Incluir al menos dos usuarios si se generan entregas.
+
+## Relaciones de los datos
+
+Los datos insertados mantienen estas relaciones:
+
+- Cada pedido pertenece a un usuario con rol `customer`.
+- Cada entrega pertenece a un pedido.
+- Los repartidores tienen rol `driver`.
+- Las entregas pendientes o canceladas no tienen repartidor.
+- Las demás entregas tienen un repartidor asignado.
+- Los roles, estados y prioridades se toman desde las constantes.
+
+## Organización del módulo
+
+El módulo de mocking está organizado de esta manera:
+
+```text
+src/mocks/
+├── controllers/
+│   └── mock.controller.js
+├── repositories/
+│   └── mock.repository.js
+├── routes/
+│   └── mock.routes.js
+├── services/
+│   └── mock.service.js
+├── users.mock.js
+├── orders.mock.js
+└── deliveries.mock.js
+```
 
 El recorrido de una petición es:
 
-`Router → Controller → Service → Repository → Model → MongoDB`
+```text
+Router → Controller → Service → Repository → Model → MongoDB
+```
 
-## Diferencia entre Service y Repository
+Los archivos `.mock.js` generan los datos falsos.
 
-Decidí separar estas capas para que cada una tenga una responsabilidad diferente.
+El Service valida las cantidades, usa los generadores y mantiene las relaciones entre los datos.
 
-El Repository se encarga únicamente de acceder a la base de datos utilizando Mongoose.
+El Repository se utiliza para insertar los registros mediante los modelos de Mongoose.
 
-El Service utiliza el Repository y aplica las reglas de negocio. Por ejemplo, determina si un producto está disponible según su stock, normaliza los emails y evita que se registren usuarios repetidos.
+El Router solamente define las rutas y llama al Controller.
 
-De esta manera, el Controller no necesita conocer cómo funciona MongoDB.
+## Funcionalidades anteriores
 
-## Rutas de productos
+También se mantienen las rutas CRUD realizadas en la pre-entrega anterior:
 
-- `GET /api/products`: obtener todos los productos.
-- `GET /api/products/available`: obtener productos disponibles.
-- `GET /api/products/:id`: obtener un producto por ID.
-- `POST /api/products`: crear un producto.
-- `PUT /api/products/:id`: actualizar un producto.
-- `DELETE /api/products/:id`: eliminar un producto.
-
-## Rutas de usuarios
-
-- `GET /api/users`: obtener todos los usuarios.
-- `GET /api/users/:id`: obtener un usuario por ID.
-- `POST /api/users`: crear un usuario.
-- `PUT /api/users/:id`: actualizar un usuario.
-- `DELETE /api/users/:id`: eliminar un usuario.
-
-## Variables de entorno
-
-Las variables `PORT`, `MONGODB_URI` y `NODE_ENV` se encuentran centralizadas y se validan cuando se inicia la aplicación.
-
-Si falta alguna variable, el servidor muestra un error indicando cuál falta.
+- `/api/products`
+- `/api/users`
 
 ## Aclaración sobre las contraseñas
 
-En esta pre-entrega las contraseñas se guardan sin hashing.
+En estas pre-entregas las contraseñas se guardan sin hashing.
 
-La contraseña no se devuelve en las respuestas.
+Las contraseñas no se devuelven en las respuestas de la API.
 
 ## Autor
 
