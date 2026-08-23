@@ -13,7 +13,7 @@
   "license": "(ISC)",
   "author": "Rodrigo Isla",
   "type": "module",
-  "main": "index.js",
+  "main": "src/server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node src/server.js",
