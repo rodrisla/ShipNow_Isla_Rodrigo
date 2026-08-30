@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 
-dotenv.config();
+dotenv.config({ quiet: true });
 
 const requiredVariables = ['PORT', 'MONGODB_URI', 'NODE_ENV'];
 

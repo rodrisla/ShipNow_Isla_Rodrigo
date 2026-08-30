@@ -1,3 +1,4 @@
+import { logger } from '../config/logger.js';
 import { AppError, ERROR_CODES } from '../errors/index.js';
 
 const getValidationMessage = (error) => {
@@ -38,6 +39,14 @@ const mapToAppError = (error) => {
   return new AppError(ERROR_CODES.INTERNAL_SERVER_ERROR, undefined, error);
 };
 
+const getTechnicalDetails = (error) => {
+  if (error instanceof Error) {
+    return error.stack ?? error.message;
+  }
+
+  return String(error);
+};
+
 export const notFoundHandler = (req, _res, next) => {
   next(
     new AppError(
@@ -47,12 +56,22 @@ export const notFoundHandler = (req, _res, next) => {
   );
 };
 
-export const errorHandler = (error, _req, res, _next) => {
+export const errorHandler = (error, req, res, _next) => {
   const appError =
     error instanceof AppError ? error : mapToAppError(error);
 
+  const logMessage =
+    `${req.method} ${req.originalUrl} - ` +
+    `${appError.code}: ${appError.message}`;
+
   if (appError.statusCode >= 500) {
-    console.error(appError.cause ?? error);
+    const internalError = appError.cause ?? error;
+
+    logger.error(
+      `${logMessage} | ${getTechnicalDetails(internalError)}`
+    );
+  } else {
+    logger.warning(logMessage);
   }
 
   return res.status(appError.statusCode).json({

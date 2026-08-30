@@ -1,19 +1,36 @@
 import express from 'express';
 
 import { env } from './config/env.config.js';
+import { logger } from './config/logger.js';
+import { errorHandler, notFoundHandler } from './middlewares/error.middleware.js';
+import { httpLogger } from './middlewares/http-logger.middleware.js';
 import mocksRouter from './mocks/routes/mock.routes.js';
 import productsRouter from './routes/products.routes.js';
 import usersRouter from './routes/users.routes.js';
-import { errorHandler, notFoundHandler } from './middlewares/error.middleware.js';
 
 const app = express();
 
+app.use(httpLogger);
 app.use(express.json());
 
-app.get('/', (req, res) => {
+app.get('/', (_req, res) => {
   res.status(200).json({
     status: 'success',
     message: 'ShipNow funcionando'
+  });
+});
+
+app.get('/logger-test', (_req, res) => {
+  logger.debug('Prueba del logger: nivel debug');
+  logger.http('Prueba del logger: nivel http');
+  logger.info('Prueba del logger: nivel info');
+  logger.warning('Prueba del logger: nivel warning');
+  logger.error('Prueba del logger: nivel error');
+  logger.fatal('Prueba del logger: nivel fatal');
+
+  res.status(200).json({
+    status: 'success',
+    message: 'Todos los niveles del logger fueron ejecutados'
   });
 });
 

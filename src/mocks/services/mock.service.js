@@ -1,3 +1,4 @@
+import { logger } from '../../config/logger.js';
 import { USER_ROLES } from '../../constants/index.js';
 import { AppError, ERROR_CODES } from '../../errors/index.js';
 import { generateMockDeliveries } from '../deliveries.mock.js';
@@ -120,6 +121,10 @@ class MockService {
     const quantity = getQuantity(qty);
     const users = generateMockUsers(quantity);
 
+    logger.info(
+      `Se generaron ${quantity} usuarios mock sin guardarlos en MongoDB`
+    );
+
     return removePasswords(users);
   }
 
@@ -128,8 +133,13 @@ class MockService {
     const customers = generateMockUsers(quantity, USER_ROLES.CUSTOMER);
 
     const customerIds = customers.map((customer) => customer._id);
+    const orders = generateMockOrders(quantity, customerIds);
 
-    return generateMockOrders(quantity, customerIds);
+    logger.info(
+      `Se generaron ${quantity} pedidos mock sin guardarlos en MongoDB`
+    );
+
+    return orders;
   }
 
   async generateProducts(body = {}) {
@@ -145,6 +155,10 @@ class MockService {
     const products = generateMockProducts(quantity);
 
     if (!saveToDatabase) {
+      logger.info(
+        `Se generaron ${quantity} productos mock sin guardarlos en MongoDB`
+      );
+
       return {
         products,
         savedToDatabase: false
@@ -153,6 +167,10 @@ class MockService {
 
     const createdProducts = await insertMockData(() =>
       mockRepository.insertProducts(products)
+    );
+
+    logger.info(
+      `Se generaron y guardaron ${createdProducts.length} productos mock en MongoDB`
     );
 
     return {
@@ -208,13 +226,20 @@ class MockService {
           )
         : [];
 
-    return {
+    const inserted = {
       users: createdUsers.length,
       customers: customers.length,
       drivers: drivers.length,
       orders: createdOrders.length,
       deliveries: createdDeliveries.length
     };
+
+    logger.info(
+      `Datos mock guardados en MongoDB: ${inserted.users} usuarios, ` +
+        `${inserted.orders} pedidos y ${inserted.deliveries} entregas`
+    );
+
+    return inserted;
   }
 }
 
