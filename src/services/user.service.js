@@ -1,5 +1,5 @@
+import { AppError, ERROR_CODES } from '../errors/index.js';
 import { userRepository } from '../repositories/user.repository.js';
-import { AppError } from '../utils/index.js';
 
 const normalizeEmail = (email) => {
   return typeof email === 'string'
@@ -29,7 +29,7 @@ class UserService {
     const user = await userRepository.getById(id);
 
     if (!user) {
-      throw new AppError('Usuario no encontrado', 404);
+      throw new AppError(ERROR_CODES.USER_NOT_FOUND);
     }
 
     return hidePassword(user);
@@ -42,7 +42,7 @@ class UserService {
       const existingUser = await userRepository.getByEmail(email);
 
       if (existingUser) {
-        throw new AppError('El email ya está registrado', 409);
+        throw new AppError(ERROR_CODES.USER_ALREADY_EXISTS);
       }
     }
 
@@ -58,7 +58,7 @@ class UserService {
     const currentUser = await userRepository.getById(id);
 
     if (!currentUser) {
-      throw new AppError('Usuario no encontrado', 404);
+      throw new AppError(ERROR_CODES.USER_NOT_FOUND);
     }
 
     const updateData = { ...userData };
@@ -71,7 +71,7 @@ class UserService {
         existingUser &&
         existingUser._id.toString() !== id
       ) {
-        throw new AppError('El email ya está registrado', 409);
+        throw new AppError(ERROR_CODES.USER_ALREADY_EXISTS);
       }
 
       updateData.email = email;
@@ -80,7 +80,7 @@ class UserService {
     const updatedUser = await userRepository.updateById(id, updateData);
 
     if (!updatedUser) {
-      throw new AppError('Usuario no encontrado', 404);
+      throw new AppError(ERROR_CODES.USER_NOT_FOUND);
     }
 
     return hidePassword(updatedUser);
@@ -90,7 +90,7 @@ class UserService {
     const deletedUser = await userRepository.deleteById(id);
 
     if (!deletedUser) {
-      throw new AppError('Usuario no encontrado', 404);
+      throw new AppError(ERROR_CODES.USER_NOT_FOUND);
     }
 
     return hidePassword(deletedUser);

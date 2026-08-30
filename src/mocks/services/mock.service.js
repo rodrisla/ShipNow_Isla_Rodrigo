@@ -1,7 +1,8 @@
 import { USER_ROLES } from '../../constants/index.js';
-import { AppError } from '../../utils/index.js';
+import { AppError, ERROR_CODES } from '../../errors/index.js';
 import { generateMockDeliveries } from '../deliveries.mock.js';
 import { generateMockOrders } from '../orders.mock.js';
+import { generateMockProducts } from '../products.mock.js';
 import { generateMockUsers } from '../users.mock.js';
 import { mockRepository } from '../repositories/mock.repository.js';
 
@@ -17,8 +18,8 @@ const getQuantity = (qty) => {
     quantity > MAX_QUANTITY
   ) {
     throw new AppError(
-      'La cantidad debe ser un número entero entre 1 y 100',
-      400
+      ERROR_CODES.INVALID_MOCK_AMOUNT,
+      'La cantidad debe ser un número entero entre 1 y 100'
     );
   }
 
@@ -26,6 +27,13 @@ const getQuantity = (qty) => {
 };
 
 const getDataQuantities = (body) => {
+  if (body === null || typeof body !== 'object' || Array.isArray(body)) {
+    throw new AppError(
+      ERROR_CODES.INVALID_MOCK_DATA,
+      'El body debe ser un objeto JSON'
+    );
+  }
+
   const { users, orders, deliveries } = body;
   const quantities = [users, orders, deliveries];
 
@@ -38,40 +46,43 @@ const getDataQuantities = (body) => {
 
   if (hasInvalidQuantity) {
     throw new AppError(
-      'users, orders y deliveries deben ser números enteros entre 0 y 100',
-      400
+      ERROR_CODES.INVALID_MOCK_DATA,
+      'users, orders y deliveries deben ser números enteros entre 0 y 100'
     );
   }
 
   if (users === 0 && orders === 0 && deliveries === 0) {
-    throw new AppError('Debe generarse al menos un registro', 400);
+    throw new AppError(
+      ERROR_CODES.INVALID_MOCK_DATA,
+      'Debe generarse al menos un registro'
+    );
   }
 
   if (orders > 0 && users === 0) {
     throw new AppError(
-      'Para generar pedidos también deben generarse usuarios',
-      400
+      ERROR_CODES.INVALID_MOCK_DATA,
+      'Para generar pedidos también deben generarse usuarios'
     );
   }
 
   if (deliveries > 0 && orders === 0) {
     throw new AppError(
-      'Para generar entregas también deben generarse pedidos',
-      400
+      ERROR_CODES.INVALID_MOCK_DATA,
+      'Para generar entregas también deben generarse pedidos'
     );
   }
 
   if (deliveries > orders) {
     throw new AppError(
-      'La cantidad de entregas no puede superar la cantidad de pedidos',
-      400
+      ERROR_CODES.INVALID_MOCK_DATA,
+      'La cantidad de entregas no puede superar la cantidad de pedidos'
     );
   }
 
   if (deliveries > 0 && users < 2) {
     throw new AppError(
-      'Para generar entregas se necesitan al menos dos usuarios',
-      400
+      ERROR_CODES.INVALID_MOCK_DATA,
+      'Para generar entregas se necesitan al menos dos usuarios'
     );
   }
 
@@ -80,6 +91,29 @@ const getDataQuantities = (body) => {
 
 const removePasswords = (users) =>
   users.map(({ password, ...user }) => user);
+
+const getSaveToDatabase = (saveToDatabase) => {
+  if (saveToDatabase === undefined) {
+    return false;
+  }
+
+  if (typeof saveToDatabase !== 'boolean') {
+    throw new AppError(
+      ERROR_CODES.INVALID_MOCK_DATA,
+      'saveToDatabase debe ser un valor booleano'
+    );
+  }
+
+  return saveToDatabase;
+};
+
+const insertMockData = async (insertOperation) => {
+  try {
+    return await insertOperation();
+  } catch (error) {
+    throw new AppError(ERROR_CODES.MOCK_GENERATION_ERROR, undefined, error);
+  }
+};
 
 class MockService {
   generateUsers(qty) {
@@ -91,14 +125,40 @@ class MockService {
 
   generateOrders(qty) {
     const quantity = getQuantity(qty);
-    const customers = generateMockUsers(
-      quantity,
-      USER_ROLES.CUSTOMER
-    );
+    const customers = generateMockUsers(quantity, USER_ROLES.CUSTOMER);
 
     const customerIds = customers.map((customer) => customer._id);
 
     return generateMockOrders(quantity, customerIds);
+  }
+
+  async generateProducts(body = {}) {
+    if (body === null || typeof body !== 'object' || Array.isArray(body)) {
+      throw new AppError(
+        ERROR_CODES.INVALID_MOCK_DATA,
+        'El body debe ser un objeto JSON'
+      );
+    }
+
+    const quantity = getQuantity(body.count);
+    const saveToDatabase = getSaveToDatabase(body.saveToDatabase);
+    const products = generateMockProducts(quantity);
+
+    if (!saveToDatabase) {
+      return {
+        products,
+        savedToDatabase: false
+      };
+    }
+
+    const createdProducts = await insertMockData(() =>
+      mockRepository.insertProducts(products)
+    );
+
+    return {
+      products: createdProducts,
+      savedToDatabase: true
+    };
   }
 
   async generateData(body = {}) {
@@ -113,7 +173,9 @@ class MockService {
       mockUsers[1].role = USER_ROLES.DRIVER;
     }
 
-    const createdUsers = await mockRepository.insertUsers(mockUsers);
+    const createdUsers = await insertMockData(() =>
+      mockRepository.insertUsers(mockUsers)
+    );
 
     const customers = createdUsers.filter(
       (user) => user.role === USER_ROLES.CUSTOMER
@@ -126,14 +188,11 @@ class MockService {
     const customerIds = customers.map((customer) => customer._id);
     const driverIds = drivers.map((driver) => driver._id);
 
-    const mockOrders = generateMockOrders(
-      quantities.orders,
-      customerIds
-    );
+    const mockOrders = generateMockOrders(quantities.orders, customerIds);
 
     const createdOrders =
       quantities.orders > 0
-        ? await mockRepository.insertOrders(mockOrders)
+        ? await insertMockData(() => mockRepository.insertOrders(mockOrders))
         : [];
 
     const mockDeliveries = generateMockDeliveries(
@@ -144,7 +203,9 @@ class MockService {
 
     const createdDeliveries =
       quantities.deliveries > 0
-        ? await mockRepository.insertDeliveries(mockDeliveries)
+        ? await insertMockData(() =>
+            mockRepository.insertDeliveries(mockDeliveries)
+          )
         : [];
 
     return {

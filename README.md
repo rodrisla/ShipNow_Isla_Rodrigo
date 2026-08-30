@@ -1,15 +1,14 @@
-# ShipNow - Pre-entrega Módulo 2
+# ShipNow - Pre-entrega Módulo 3
 
-ShipNow es una API realizada para el curso de Backend.
-
-En esta pre-entrega agregué un módulo de mocking para generar usuarios, repartidores, pedidos y entregas de prueba utilizando Faker.
+En esta pre-entrega se incorporó una capa profesional y centralizada de manejo de errores. Los errores se detectan en la capa correspondiente, especialmente en los services, y la respuesta HTTP final se construye únicamente desde el middleware global.
 
 ## Versiones del proyecto
 
 Cada pre-entrega se encuentra separada en su propia rama:
 
 - [Pre-entrega 1](https://github.com/rodrisla/ShipNow_Isla_Rodrigo/tree/pre-entrega-1)
-- [Pre-entrega 2](https://github.com/rodrisla/ShipNow_Isla_Rodrigo/tree/pre-entrega-2) - Rama actual
+- [Pre-entrega 2](https://github.com/rodrisla/ShipNow_Isla_Rodrigo/tree/pre-entrega-2)
+- [Pre-entrega 3](https://github.com/rodrisla/ShipNow_Isla_Rodrigo/tree/pre-entrega-3) - Rama actual
 
 ## Tecnologías utilizadas
 
@@ -22,21 +21,16 @@ Cada pre-entrega se encuentra separada en su propia rama:
 
 ## Cómo ejecutar el proyecto
 
-Clonar la rama de la pre-entrega 2:
+Clonar la rama de la pre-entrega 3:
 
 ```bash
-git clone --branch pre-entrega-2 https://github.com/rodrisla/ShipNow_Isla_Rodrigo.git
+git clone --branch pre-entrega-3 https://github.com/rodrisla/ShipNow_Isla_Rodrigo.git
 ```
 
-Entrar en la carpeta:
+Entrar en la carpeta e instalar las dependencias:
 
 ```bash
 cd ShipNow_Isla_Rodrigo
-```
-
-Instalar las dependencias:
-
-```bash
 npm install
 ```
 
@@ -54,70 +48,167 @@ Ejecutar el proyecto:
 npm run dev
 ```
 
-## Módulo de mocks
+## Formato centralizado de errores
 
-Las rutas de mocks se encuentran bajo:
+Todas las respuestas de error respetan la misma estructura:
 
-```text
-/api/mocks
+```json
+{
+  "status": "error",
+  "error": "ERROR_CODE",
+  "message": "Mensaje claro para el cliente"
+}
 ```
 
-Estas rutas están disponibles solamente cuando la aplicación se ejecuta con:
+Ejemplo:
+
+```json
+{
+  "status": "error",
+  "error": "PRODUCT_NOT_FOUND",
+  "message": "No se encontró el producto solicitado"
+}
+```
+
+Los errores inesperados responden con `INTERNAL_SERVER_ERROR` y no exponen stacks, rutas internas, datos de conexión ni otros detalles sensibles.
+
+## Organización de la capa de errores
+
+```text
+src/
+├── errors/
+│   ├── app-error.js
+│   ├── error-codes.js
+│   ├── errors.dictionary.js
+│   └── index.js
+└── middlewares/
+    └── error.middleware.js
+```
+
+- `error-codes.js`: contiene los identificadores estables de los errores.
+- `errors.dictionary.js`: relaciona cada código con su mensaje y status HTTP.
+- `app-error.js`: define el error personalizado de la aplicación.
+- `index.js`: centraliza las exportaciones de la carpeta.
+- `error.middleware.js`: transforma los errores en respuestas HTTP uniformes.
+
+El recorrido de un error controlado es:
+
+```text
+Service detecta el problema → lanza AppError → Controller ejecuta next(error) → Middleware global responde
+```
+
+Los services no dependen de Express y los repositories no construyen respuestas HTTP.
+
+## Códigos de error implementados
+
+| Código | HTTP | Caso principal |
+|---|---:|---|
+| `PRODUCT_NOT_FOUND` | 404 | El producto solicitado no existe |
+| `USER_NOT_FOUND` | 404 | El usuario solicitado no existe |
+| `USER_ALREADY_EXISTS` | 409 | El email ya está registrado |
+| `INVALID_MOCK_AMOUNT` | 400 | La cantidad de mocks es inválida |
+| `INVALID_MOCK_DATA` | 400 | Los datos o relaciones de mocks son inválidos |
+| `MOCK_GENERATION_ERROR` | 500 | Falló la generación o carga de mocks |
+| `INVALID_ID` | 400 | El identificador no tiene un formato válido |
+| `VALIDATION_ERROR` | 400 | Mongoose rechazó los datos enviados |
+| `DUPLICATE_RESOURCE` | 409 | Existe un registro con un valor único repetido |
+| `ROUTE_NOT_FOUND` | 404 | La ruta solicitada no existe |
+| `INTERNAL_SERVER_ERROR` | 500 | Ocurrió un error inesperado |
+
+El middleware también transforma automáticamente errores de Mongoose y MongoDB, incluidos `CastError`, `ValidationError` y errores de clave duplicada con código `11000`.
+
+## Pruebas manuales con Postman
+
+Las pruebas manuales de esta entrega se realizaron desde Postman con el servidor iniciado en `http://localhost:8080`.
+
+Para las peticiones `POST`, se seleccionó `Body → raw → JSON` y se agregó automáticamente el encabezado `Content-Type: application/json`.
+
+| Caso | Método | URL | Respuesta esperada |
+|---|---|---|---|
+| Ruta inexistente | `GET` | `http://localhost:8080/api/ruta-que-no-existe` | `404 ROUTE_NOT_FOUND` |
+| Producto inexistente | `GET` | `http://localhost:8080/api/products/000000000000000000000000` | `404 PRODUCT_NOT_FOUND` |
+| ID inválido | `GET` | `http://localhost:8080/api/products/abc` | `400 INVALID_ID` |
+| Usuario inexistente | `GET` | `http://localhost:8080/api/users/000000000000000000000000` | `404 USER_NOT_FOUND` |
+
+### Datos inválidos de producto
+
+Configurar en Postman:
+
+```http
+POST http://localhost:8080/api/products
+```
+
+Body:
+
+```json
+{
+  "name": "A",
+  "price": -1,
+  "stock": -2
+}
+```
+
+Respuesta esperada: `400 VALIDATION_ERROR` con los mensajes de validación del modelo.
+
+## Módulo de mocks
+
+Las rutas de mocks se encuentran bajo `/api/mocks` y solo están disponibles cuando la aplicación se ejecuta con:
 
 ```env
 NODE_ENV=development
 ```
 
-En otro entorno, las rutas de mocks responden `404`.
+En otro entorno, estas rutas responden `404` mediante la misma capa centralizada.
 
-Los endpoints se pueden probar desde Postman.
-
-## Generar usuarios sin guardar
-
-Configurar en Postman:
+### Generar usuarios sin guardar
 
 ```http
-GET http://localhost:8080/api/mocks/mockingusers?qty=10
+GET /api/mocks/mockingusers?qty=10
 ```
 
-Este endpoint genera usuarios falsos sin guardarlos en MongoDB.
+Si no se envía `qty`, se generan 10 usuarios. Se aceptan cantidades enteras entre 1 y 100.
 
-Los roles `customer` y `driver` se eligen de manera aleatoria y se toman desde las constantes del proyecto.
-
-Las contraseñas se generan porque forman parte del modelo, pero no se muestran en la respuesta.
-
-Si no se envía `qty`, se generan 10 usuarios. Se aceptan cantidades entre 1 y 100.
-
-## Generar pedidos sin guardar
-
-Configurar en Postman:
+### Generar pedidos sin guardar
 
 ```http
-GET http://localhost:8080/api/mocks/mockingorders?qty=10
+GET /api/mocks/mockingorders?qty=10
 ```
 
-Este endpoint genera pedidos falsos sin guardarlos en MongoDB.
+Los pedidos generados contienen un usuario simulado, dirección, estado y prioridad válidos.
 
-Cada pedido contiene:
-
-- ID de un usuario simulado.
-- Dirección de entrega.
-- Estado válido.
-- Prioridad válida.
-
-Los estados y prioridades se toman desde las constantes del proyecto.
-
-## Insertar datos de prueba
-
-Configurar en Postman:
+### Generar productos
 
 ```http
-POST http://localhost:8080/api/mocks/generateData
+POST /api/mocks/generate-products
 ```
 
-Seleccionar `Body`, luego `raw` y elegir el formato `JSON`.
+Body para generarlos sin guardar:
 
-Ejemplo:
+```json
+{
+  "count": 10,
+  "saveToDatabase": false
+}
+```
+
+Body para insertarlos en MongoDB:
+
+```json
+{
+  "count": 10,
+  "saveToDatabase": true
+}
+```
+
+Cada producto utiliza los campos del modelo de ShipNow: `name`, `description`, `price`, `stock` y `status`. El status se calcula de acuerdo con el stock.
+
+### Insertar usuarios, pedidos y entregas relacionados
+
+```http
+POST /api/mocks/generateData
+```
+
+Body de ejemplo:
 
 ```json
 {
@@ -127,102 +218,95 @@ Ejemplo:
 }
 ```
 
-Este endpoint genera los datos y los inserta en MongoDB respetando el siguiente orden:
+El endpoint inserta primero los usuarios, luego los pedidos relacionados con clientes y finalmente las entregas relacionadas con pedidos y repartidores.
 
-1. Usuarios.
-2. Pedidos relacionados con usuarios.
-3. Entregas relacionadas con pedidos y repartidores.
+## Pruebas de errores de mocks con Postman
 
-Ejemplo de respuesta:
+Estos casos también se probaron manualmente desde Postman.
+
+### Cantidad negativa
+
+```http
+GET http://localhost:8080/api/mocks/mockingusers?qty=-1
+```
+
+Respuesta esperada: `400 INVALID_MOCK_AMOUNT`.
+
+### Cantidad de productos inválida
+
+```http
+POST http://localhost:8080/api/mocks/generate-products
+```
+
+Body:
 
 ```json
 {
-  "status": "success",
-  "data": {
-    "inserted": {
-      "users": 10,
-      "customers": 6,
-      "drivers": 4,
-      "orders": 20,
-      "deliveries": 5
-    }
-  }
+  "count": -2,
+  "saveToDatabase": false
 }
 ```
 
-La cantidad de clientes y repartidores puede variar porque los roles se generan de forma aleatoria.
+Respuesta esperada: `400 INVALID_MOCK_AMOUNT`.
 
-Los repartidores también son usuarios, pero tienen el rol `driver`. Por eso, la cantidad indicada en `users` es el total entre clientes y repartidores.
+### Opción de guardado inválida
 
-Cada vez que se ejecuta este endpoint se agregan nuevos registros de prueba.
-
-## Validaciones
-
-Las cantidades enviadas deben:
-
-- Ser números enteros entre 0 y 100.
-- Tener al menos un valor mayor a cero.
-- Incluir usuarios si se generan pedidos.
-- Incluir pedidos si se generan entregas.
-- No pedir más entregas que pedidos.
-- Incluir al menos dos usuarios si se generan entregas.
-
-## Relaciones de los datos
-
-Los datos insertados mantienen estas relaciones:
-
-- Cada pedido pertenece a un usuario con rol `customer`.
-- Cada entrega pertenece a un pedido.
-- Los repartidores tienen rol `driver`.
-- Las entregas pendientes o canceladas no tienen repartidor.
-- Las demás entregas tienen un repartidor asignado.
-- Los roles, estados y prioridades se toman desde las constantes.
-
-## Organización del módulo
-
-El módulo de mocking está organizado de esta manera:
-
-```text
-src/mocks/
-├── controllers/
-│   └── mock.controller.js
-├── repositories/
-│   └── mock.repository.js
-├── routes/
-│   └── mock.routes.js
-├── services/
-│   └── mock.service.js
-├── users.mock.js
-├── orders.mock.js
-└── deliveries.mock.js
+```http
+POST http://localhost:8080/api/mocks/generate-products
 ```
 
-El recorrido de una petición es:
+Body:
 
-```text
-Router → Controller → Service → Repository → Model → MongoDB
+```json
+{
+  "count": 2,
+  "saveToDatabase": "true"
+}
 ```
 
-Los archivos `.mock.js` generan los datos falsos.
+Respuesta esperada: `400 INVALID_MOCK_DATA` porque `saveToDatabase` debe ser booleano.
 
-El Service valida las cantidades, usa los generadores y mantiene las relaciones entre los datos.
+### Relación inválida entre datos
 
-El Repository se utiliza para insertar los registros mediante los modelos de Mongoose.
+```http
+POST http://localhost:8080/api/mocks/generateData
+```
 
-El Router solamente define las rutas y llama al Controller.
+Body:
 
-## Funcionalidades anteriores
+```json
+{
+  "users": 0,
+  "orders": 1,
+  "deliveries": 0
+}
+```
 
-También se mantienen las rutas CRUD realizadas en la pre-entrega anterior:
+Respuesta esperada: `400 INVALID_MOCK_DATA` porque no se pueden crear pedidos sin usuarios.
+
+Las inserciones del módulo pasan por `MockRepository`. Si MongoDB falla durante la carga, el Service genera `MOCK_GENERATION_ERROR` y el middleware responde `500` sin exponer la causa interna.
+
+## Validaciones de generateData
+
+- `users`, `orders` y `deliveries` deben ser enteros entre 0 y 100.
+- Debe solicitarse al menos un registro.
+- Para generar pedidos también deben generarse usuarios.
+- Para generar entregas también deben generarse pedidos.
+- La cantidad de entregas no puede superar la de pedidos.
+- Para generar entregas deben solicitarse al menos dos usuarios.
+
+## Funcionalidades disponibles
+
+Se mantienen las rutas CRUD anteriores:
 
 - `/api/products`
 - `/api/users`
 
+También se mantienen los mocks de usuarios, pedidos y entregas, junto con sus relaciones y constantes de dominio.
+
 ## Aclaración sobre las contraseñas
 
-En estas pre-entregas las contraseñas se guardan sin hashing.
-
-Las contraseñas no se devuelven en las respuestas de la API.
+En estas pre-entregas las contraseñas se guardan sin hashing. Las contraseñas no se devuelven en las respuestas de la API.
 
 ## Autor
 

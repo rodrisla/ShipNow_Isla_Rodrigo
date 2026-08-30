@@ -1,38 +1,63 @@
-export const notFoundHandler = (req, res) => {
-  return res.status(404).json({
-    status: 'error',
-    message: `Ruta no encontrada: ${req.method} ${req.originalUrl}`
-  });
+import { AppError, ERROR_CODES } from '../errors/index.js';
+
+const getValidationMessage = (error) => {
+  const messages = Object.values(error.errors ?? {})
+    .map((validationError) => validationError.message)
+    .filter(Boolean);
+
+  return messages.length > 0 ? messages.join(', ') : undefined;
 };
 
-export const errorHandler = (error, _req, res, _next) => {
-  let statusCode = error.statusCode || 500;
-  let message = error.message || 'Error interno del servidor';
-
+const mapToAppError = (error) => {
   if (error.name === 'CastError') {
-    statusCode = 400;
-    message = 'El identificador proporcionado no es válido';
-  }
+    if (error.path === '_id' || error.kind === 'ObjectId') {
+      return new AppError(ERROR_CODES.INVALID_ID);
+    }
 
-  if (error.name === 'ValidationError') {
-    statusCode = 400;
-    message = Object.values(error.errors)
-      .map((validationError) => validationError.message)
-      .join(', ');
+    return new AppError(
+      ERROR_CODES.VALIDATION_ERROR,
+      `El valor enviado para ${error.path} no es válido`
+    );
   }
 
   if (error.code === 11000) {
-    statusCode = 409;
-    message = 'Ya existe un registro con esos datos';
+    if (error.keyPattern?.email || error.keyValue?.email) {
+      return new AppError(ERROR_CODES.USER_ALREADY_EXISTS);
+    }
+
+    return new AppError(ERROR_CODES.DUPLICATE_RESOURCE);
   }
 
-  if (statusCode >= 500) {
-    console.error(error);
-    message = 'Error interno del servidor';
+  if (error.name === 'ValidationError') {
+    return new AppError(
+      ERROR_CODES.VALIDATION_ERROR,
+      getValidationMessage(error)
+    );
   }
 
-  return res.status(statusCode).json({
+  return new AppError(ERROR_CODES.INTERNAL_SERVER_ERROR, undefined, error);
+};
+
+export const notFoundHandler = (req, _res, next) => {
+  next(
+    new AppError(
+      ERROR_CODES.ROUTE_NOT_FOUND,
+      `Ruta no encontrada: ${req.method} ${req.originalUrl}`
+    )
+  );
+};
+
+export const errorHandler = (error, _req, res, _next) => {
+  const appError =
+    error instanceof AppError ? error : mapToAppError(error);
+
+  if (appError.statusCode >= 500) {
+    console.error(appError.cause ?? error);
+  }
+
+  return res.status(appError.statusCode).json({
     status: 'error',
-    message
+    error: appError.code,
+    message: appError.message
   });
 };

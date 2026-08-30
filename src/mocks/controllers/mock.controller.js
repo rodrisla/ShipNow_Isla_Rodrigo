@@ -27,6 +27,19 @@ class MockController {
     }
   }
 
+    async generateProducts(req, res, next) {
+    try {
+      const result = await mockService.generateProducts(req.body);
+
+      return res.status(result.savedToDatabase ? 201 : 200).json({
+        status: 'success',
+        data: result
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async generateData(req, res, next) {
     try {
       const inserted = await mockService.generateData(req.body);

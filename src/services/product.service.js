@@ -1,6 +1,6 @@
-import { PRODUCT_STATUS } from '../constants/index.js';
-import { productRepository } from '../repositories/product.repository.js';
-import { AppError } from '../utils/index.js';
+import { PRODUCT_STATUS } from "../constants/index.js";
+import { productRepository } from "../repositories/product.repository.js";
+import { AppError, ERROR_CODES } from "../errors/index.js";
 
 const getProductStatus = (stock) => {
   return Number(stock) > 0
@@ -17,7 +17,7 @@ class ProductService {
     const products = await productRepository.getAll();
 
     return products.filter(
-      (product) => product.status === PRODUCT_STATUS.AVAILABLE
+      (product) => product.status === PRODUCT_STATUS.AVAILABLE,
     );
   }
 
@@ -25,7 +25,7 @@ class ProductService {
     const product = await productRepository.getById(id);
 
     if (!product) {
-      throw new AppError('Producto no encontrado', 404);
+      throw new AppError(ERROR_CODES.PRODUCT_NOT_FOUND);
     }
 
     return product;
@@ -36,7 +36,7 @@ class ProductService {
 
     return productRepository.create({
       ...productData,
-      status: getProductStatus(stock)
+      status: getProductStatus(stock),
     });
   }
 
@@ -44,7 +44,7 @@ class ProductService {
     const currentProduct = await productRepository.getById(id);
 
     if (!currentProduct) {
-      throw new AppError('Producto no encontrado', 404);
+      throw new AppError(ERROR_CODES.PRODUCT_NOT_FOUND);
     }
 
     const nextStock =
@@ -54,11 +54,11 @@ class ProductService {
 
     const updatedProduct = await productRepository.updateById(id, {
       ...productData,
-      status: getProductStatus(nextStock)
+      status: getProductStatus(nextStock),
     });
 
     if (!updatedProduct) {
-      throw new AppError('Producto no encontrado', 404);
+      throw new AppError(ERROR_CODES.PRODUCT_NOT_FOUND);
     }
 
     return updatedProduct;
@@ -68,7 +68,7 @@ class ProductService {
     const deletedProduct = await productRepository.deleteById(id);
 
     if (!deletedProduct) {
-      throw new AppError('Producto no encontrado', 404);
+      throw new AppError(ERROR_CODES.PRODUCT_NOT_FOUND);
     }
 
     return deletedProduct;
