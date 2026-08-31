@@ -15,7 +15,7 @@
   "type": "module",
   "main": "src/server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "mocha --require test/root-hooks.js \"test/functional/**/*.test.js\" --timeout 15000",
     "start": "node src/server.js",
     "dev": "node --watch src/server.js"
   },
@@ -29,6 +29,9 @@
     "winston-daily-rotate-file": "^5.0.0"
   },
   "devDependencies": {
-    "@faker-js/faker": "^10.6.0"
+    "@faker-js/faker": "^10.6.0",
+    "chai": "^6.2.2",
+    "mocha": "^12.0.0",
+    "supertest": "^7.2.2"
   }
 }

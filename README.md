@@ -1,8 +1,8 @@
-# ShipNow - Pre-entrega Módulo 5
+# ShipNow - Pre-entrega Módulo 6
 
-En esta pre-entrega se incorporó documentación técnica e interactiva con Swagger y OpenAPI. La documentación refleja las rutas, parámetros, bodies, respuestas y errores reales de ShipNow.
+En esta pre-entrega se incorporó una suite de testing funcional con Mocha, Chai y Supertest. Las pruebas validan endpoints reales de ShipNow, casos exitosos, errores esperados y la estructura completa de las respuestas.
 
-Swagger UI permite consultar y probar los módulos Users, Products, Orders, Deliveries, Mocks y Logger. La implementación conserva la arquitectura por capas, los mocks, el manejo centralizado de errores y el logging desarrollados en los módulos anteriores.
+El entorno de testing utiliza una base MongoDB separada y descartable, datos controlados y limpieza automática.
 
 ## Versiones del proyecto
 
@@ -12,7 +12,8 @@ Cada pre-entrega se encuentra separada en su propia rama:
 - [Pre-entrega 2](https://github.com/rodrisla/ShipNow_Isla_Rodrigo/tree/pre-entrega-2)
 - [Pre-entrega 3](https://github.com/rodrisla/ShipNow_Isla_Rodrigo/tree/pre-entrega-3)
 - [Pre-entrega 4](https://github.com/rodrisla/ShipNow_Isla_Rodrigo/tree/pre-entrega-4)
-- [Pre-entrega 5](https://github.com/rodrisla/ShipNow_Isla_Rodrigo/tree/pre-entrega-5) - Rama actual
+- [Pre-entrega 5](https://github.com/rodrisla/ShipNow_Isla_Rodrigo/tree/pre-entrega-5)
+- [Pre-entrega 6](https://github.com/rodrisla/ShipNow_Isla_Rodrigo/tree/pre-entrega-6) - Rama actual
 
 ## Tecnologías utilizadas
 
@@ -26,13 +27,16 @@ Cada pre-entrega se encuentra separada en su propia rama:
 - winston-daily-rotate-file
 - swagger-jsdoc
 - swagger-ui-express
+- Mocha
+- Chai
+- Supertest
 
 ## Cómo ejecutar el proyecto
 
-Clonar la rama de la pre-entrega 5:
+Clonar la rama de la pre-entrega 6:
 
 ```bash
-git clone --branch pre-entrega-5 https://github.com/rodrisla/ShipNow_Isla_Rodrigo.git
+git clone --branch pre-entrega-6 https://github.com/rodrisla/ShipNow_Isla_Rodrigo.git
 ```
 
 Entrar en la carpeta e instalar las dependencias:
@@ -55,6 +59,64 @@ Ejecutar el proyecto:
 ```bash
 npm run dev
 ```
+
+## Testing funcional automatizado
+
+La Pre-entrega 6 incorpora una suite de **19 tests funcionales** ejecutados contra la aplicación Express real.
+
+Las herramientas utilizadas son:
+
+- **Mocha:** organiza y ejecuta la suite.
+- **Chai:** valida status HTTP, estructura y propiedades de las respuestas.
+- **Supertest:** realiza peticiones sobre `app` sin iniciar un puerto.
+
+`src/app.js` exporta la aplicación y `src/server.js` se ocupa únicamente de conectar MongoDB e iniciar el servidor. Por eso los tests importan Express directamente y no requieren ejecutar `npm run dev`.
+
+### Entorno de testing
+
+Las pruebas utilizan un entorno y una base separados del desarrollo:
+
+```env
+PORT=8081
+MONGODB_URI=URI_DE_MONGODB_CON_BASE_shipnow_test
+NODE_ENV=test
+```
+
+El repositorio incluye `.env.test.example` como plantilla. El archivo privado `.env.test` está ignorado por Git y debe apuntar exclusivamente a una base descartable llamada `shipnow_test`.
+
+El hook global `test/root-hooks.js` verifica `NODE_ENV=test` y comprueba el nombre de la base antes de realizar cualquier limpieza. Si la base conectada no contiene `test`, la suite se detiene para proteger los datos de desarrollo.
+
+### Ejecutar los tests
+
+1. Crear `.env.test` a partir de `.env.test.example`.
+2. Configurar una URI de MongoDB cuya base sea `shipnow_test`.
+3. Instalar dependencias y ejecutar:
+
+```bash
+npm install
+npm test
+```
+
+No es necesario iniciar el servidor ni utilizar Postman para ejecutar la suite.
+
+### Cobertura funcional
+
+| Módulo | Casos cubiertos |
+|---|---|
+| Users | Listado, creación válida, datos incompletos y ausencia de contraseñas |
+| Orders | Listado, creación, consulta por ID, cambio de estado, datos incompletos, recurso inexistente y estado inválido |
+| Mocks | Usuarios, pedidos, productos, carga relacionada, cantidades inválidas y relaciones inválidas |
+| Logger | Ejecución de los niveles `debug`, `http`, `info`, `warning`, `error` y `fatal` |
+| Swagger | Acceso a Swagger UI y contenido principal de la especificación |
+| Errores | Ruta inexistente y formato uniforme `status`, `error` y `message` |
+
+### Datos controlados y limpieza
+
+Los payloads se generan mediante factories deterministas y cada test puede ejecutarse de forma independiente.
+
+Antes de cada test se eliminan los registros existentes. Al terminar la suite se vuelven a limpiar las colecciones y se cierra la conexión de Mongoose. De esta forma no quedan usuarios, pedidos, productos ni entregas creados por las pruebas.
+
+La suite fue ejecutada dos veces consecutivas con **19 tests aprobados** y todas las colecciones de `shipnow_test` quedaron en cero.
 
 ## Documentación interactiva con Swagger
 
@@ -92,7 +154,7 @@ Cada endpoint documenta su método, ruta, descripción, parámetros, body, respu
 3. Desplegar un endpoint y presionar **Try it out**.
 4. Completar los datos y presionar **Execute**.
 
-Las rutas de Mocks solo están disponibles con `NODE_ENV=development`. `/logger-test` es una herramienta de validación y no una funcionalidad de negocio. Como ShipNow todavía no implementa autenticación, no se documentan respuestas `401` o `403` inexistentes.
+Las rutas de Mocks están disponibles con `NODE_ENV=development` y también durante la suite aislada con `NODE_ENV=test`. `/logger-test` es una herramienta de validación y no una funcionalidad de negocio. Como ShipNow todavía no implementa autenticación, no se documentan respuestas `401` o `403` inexistentes.
 
 ## Logging profesional
 
@@ -120,6 +182,7 @@ YYYY-MM-DD HH:mm:ss [nivel] mensaje
 | Entorno | Consola | Archivos |
 |---|---|---|
 | `development` | `debug`, `http`, `info`, `warning`, `error` y `fatal` | `error` y `fatal` |
+| `test` | `debug`, `http`, `info`, `warning`, `error` y `fatal` | `error` y `fatal` |
 | `production` | `info`, `warning`, `error` y `fatal` | `error` y `fatal` |
 
 En producción se excluyen los niveles `debug` y `http` para reducir el ruido de los registros.
@@ -491,10 +554,13 @@ La aplicación incorpora además:
 - middleware de peticiones HTTP;
 - integración del logger con errores y mocks;
 - persistencia y rotación diaria;
-- endpoint `GET /logger-test`.
+- endpoint `GET /logger-test`;
 - documentación OpenAPI separada por módulos;
 - schemas reutilizables;
-- Swagger UI disponible en `/api/docs/`.
+- Swagger UI disponible en `/api/docs/`;
+- testing funcional con Mocha, Chai y Supertest;
+- entorno y base de testing separados;
+- limpieza automática de datos de prueba.
 
 ## Aclaración sobre las contraseñas
 

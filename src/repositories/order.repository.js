@@ -19,7 +19,7 @@ class OrderRepository {
     return OrderModel.findByIdAndUpdate(
       id,
       { status },
-      { new: true, runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     ).populate('user', '-password');
   }
 }

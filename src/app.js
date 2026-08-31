@@ -39,7 +39,7 @@ app.get('/logger-test', (_req, res) => {
   });
 });
 
-if (env.nodeEnv === 'development') {
+if (['development', 'test'].includes(env.nodeEnv)) {
   app.use('/api/mocks', mocksRouter);
 }
 
