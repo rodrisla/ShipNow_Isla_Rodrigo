@@ -1,0 +1,288 @@
+paths:
+  /api/users:
+    get:
+      tags:
+        - Users
+      summary: Listar usuarios
+      description: Devuelve todos los usuarios sin incluir sus contraseñas.
+      responses:
+        '200':
+          description: Lista de usuarios obtenida correctamente
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    required:
+                      - data
+                    properties:
+                      data:
+                        type: object
+                        required:
+                          - users
+                        properties:
+                          users:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/User'
+        '500':
+          description: INTERNAL_SERVER_ERROR - Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      tags:
+        - Users
+      summary: Crear un usuario
+      description: Crea un usuario con email único. La contraseña nunca se devuelve en la respuesta.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - email
+                - password
+              properties:
+                name:
+                  type: string
+                  minLength: 2
+                  maxLength: 100
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 6
+                  maxLength: 100
+                  writeOnly: true
+                role:
+                  type: string
+                  enum:
+                    - admin
+                    - customer
+                    - driver
+                    - store
+                  default: customer
+                active:
+                  type: boolean
+                  default: true
+            example:
+              name: Ana Perez
+              email: ana@shipnow.test
+              password: '123456'
+              role: customer
+      responses:
+        '201':
+          description: Usuario creado correctamente
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    required:
+                      - data
+                    properties:
+                      data:
+                        type: object
+                        required:
+                          - user
+                        properties:
+                          user:
+                            $ref: '#/components/schemas/User'
+        '400':
+          description: VALIDATION_ERROR - Los datos enviados no son válidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: USER_ALREADY_EXISTS - El email ya está registrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: INTERNAL_SERVER_ERROR - Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/users/{id}:
+    get:
+      tags:
+        - Users
+      summary: Obtener un usuario por ID
+      description: Devuelve un usuario sin incluir su contraseña.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Identificador del usuario
+          schema:
+            $ref: '#/components/schemas/ObjectId'
+      responses:
+        '200':
+          description: Usuario obtenido correctamente
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    required:
+                      - data
+                    properties:
+                      data:
+                        type: object
+                        required:
+                          - user
+                        properties:
+                          user:
+                            $ref: '#/components/schemas/User'
+        '400':
+          description: INVALID_ID - El identificador no tiene un formato válido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: USER_NOT_FOUND - El usuario no existe
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: INTERNAL_SERVER_ERROR - Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      tags:
+        - Users
+      summary: Actualizar un usuario
+      description: Actualiza uno o más campos del usuario indicado.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Identificador del usuario
+          schema:
+            $ref: '#/components/schemas/ObjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 2
+                  maxLength: 100
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 6
+                  maxLength: 100
+                  writeOnly: true
+                role:
+                  type: string
+                  enum:
+                    - admin
+                    - customer
+                    - driver
+                    - store
+                active:
+                  type: boolean
+            example:
+              name: Ana Perez Actualizada
+              active: true
+      responses:
+        '200':
+          description: Usuario actualizado correctamente
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    required:
+                      - data
+                    properties:
+                      data:
+                        type: object
+                        required:
+                          - user
+                        properties:
+                          user:
+                            $ref: '#/components/schemas/User'
+        '400':
+          description: INVALID_ID o VALIDATION_ERROR - Identificador o datos inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: USER_NOT_FOUND - El usuario no existe
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: USER_ALREADY_EXISTS - El email ya está registrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: INTERNAL_SERVER_ERROR - Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - Users
+      summary: Eliminar un usuario
+      description: Elimina definitivamente el usuario indicado.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Identificador del usuario
+          schema:
+            $ref: '#/components/schemas/ObjectId'
+      responses:
+        '204':
+          description: Usuario eliminado correctamente, sin contenido
+        '400':
+          description: INVALID_ID - El identificador no tiene un formato válido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: USER_NOT_FOUND - El usuario no existe
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: INTERNAL_SERVER_ERROR - Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'

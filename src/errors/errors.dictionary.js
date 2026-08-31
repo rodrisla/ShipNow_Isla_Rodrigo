@@ -13,6 +13,22 @@ export const ERRORS_DICTIONARY = Object.freeze({
     statusCode: 409,
     message: 'El email ya está registrado'
   },
+  [ERROR_CODES.ORDER_NOT_FOUND]: {
+    statusCode: 404,
+    message: 'No se encontró el pedido solicitado'
+  },
+  [ERROR_CODES.DELIVERY_NOT_FOUND]: {
+    statusCode: 404,
+    message: 'No se encontró la entrega solicitada'
+  },
+  [ERROR_CODES.INVALID_ORDER_STATUS]: {
+    statusCode: 400,
+    message: 'El estado indicado no es válido para un pedido'
+  },
+  [ERROR_CODES.INVALID_DELIVERY_STATUS]: {
+    statusCode: 400,
+    message: 'El estado indicado no es válido para una entrega'
+  },
   [ERROR_CODES.INVALID_MOCK_AMOUNT]: {
     statusCode: 400,
     message: 'La cantidad de datos a generar no es válida'

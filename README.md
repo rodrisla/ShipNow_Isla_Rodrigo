@@ -1,8 +1,8 @@
-# ShipNow - Pre-entrega Módulo 4
+# ShipNow - Pre-entrega Módulo 5
 
-En esta pre-entrega se incorporó un sistema profesional y centralizado de logging con Winston. ShipNow registra eventos del servidor, peticiones HTTP, operaciones del módulo de mocks, errores controlados y fallas internas mediante niveles de severidad.
+En esta pre-entrega se incorporó documentación técnica e interactiva con Swagger y OpenAPI. La documentación refleja las rutas, parámetros, bodies, respuestas y errores reales de ShipNow.
 
-La implementación conserva la arquitectura por capas, los mocks y el manejo centralizado de errores desarrollados en los módulos anteriores.
+Swagger UI permite consultar y probar los módulos Users, Products, Orders, Deliveries, Mocks y Logger. La implementación conserva la arquitectura por capas, los mocks, el manejo centralizado de errores y el logging desarrollados en los módulos anteriores.
 
 ## Versiones del proyecto
 
@@ -11,7 +11,8 @@ Cada pre-entrega se encuentra separada en su propia rama:
 - [Pre-entrega 1](https://github.com/rodrisla/ShipNow_Isla_Rodrigo/tree/pre-entrega-1)
 - [Pre-entrega 2](https://github.com/rodrisla/ShipNow_Isla_Rodrigo/tree/pre-entrega-2)
 - [Pre-entrega 3](https://github.com/rodrisla/ShipNow_Isla_Rodrigo/tree/pre-entrega-3)
-- [Pre-entrega 4](https://github.com/rodrisla/ShipNow_Isla_Rodrigo/tree/pre-entrega-4) - Rama actual
+- [Pre-entrega 4](https://github.com/rodrisla/ShipNow_Isla_Rodrigo/tree/pre-entrega-4)
+- [Pre-entrega 5](https://github.com/rodrisla/ShipNow_Isla_Rodrigo/tree/pre-entrega-5) - Rama actual
 
 ## Tecnologías utilizadas
 
@@ -23,13 +24,15 @@ Cada pre-entrega se encuentra separada en su propia rama:
 - dotenv
 - Winston
 - winston-daily-rotate-file
+- swagger-jsdoc
+- swagger-ui-express
 
 ## Cómo ejecutar el proyecto
 
-Clonar la rama de la pre-entrega 4:
+Clonar la rama de la pre-entrega 5:
 
 ```bash
-git clone --branch pre-entrega-4 https://github.com/rodrisla/ShipNow_Isla_Rodrigo.git
+git clone --branch pre-entrega-5 https://github.com/rodrisla/ShipNow_Isla_Rodrigo.git
 ```
 
 Entrar en la carpeta e instalar las dependencias:
@@ -52,6 +55,44 @@ Ejecutar el proyecto:
 ```bash
 npm run dev
 ```
+
+## Documentación interactiva con Swagger
+
+ShipNow utiliza `swagger-jsdoc` y `swagger-ui-express` con **OpenAPI 3.0.3**. La configuración está separada en `src/config/swagger.config.js` y la documentación por módulos se encuentra en `src/docs/`.
+
+Con el servidor iniciado, Swagger UI está disponible en:
+
+```text
+http://localhost:8080/api/docs/
+```
+
+### Módulos documentados
+
+| Tag | Ruta principal |
+|---|---|
+| Users | `/api/users` |
+| Products | `/api/products` |
+| Orders | `/api/orders` |
+| Deliveries | `/api/deliveries` |
+| Mocks | `/api/mocks` |
+| Logger | `/logger-test` |
+
+La especificación reúne **16 paths y 24 operaciones HTTP**, organizadas por tags.
+
+### Schemas reutilizables
+
+Swagger incluye schemas compartidos para usuarios, productos, pedidos, items de pedido, entregas, identificadores de MongoDB y respuestas exitosas o de error.
+
+Cada endpoint documenta su método, ruta, descripción, parámetros, body, respuesta exitosa y posibles errores reales de la API.
+
+### Cómo probar Swagger
+
+1. Iniciar el servidor con `npm run dev`.
+2. Abrir `http://localhost:8080/api/docs/`.
+3. Desplegar un endpoint y presionar **Try it out**.
+4. Completar los datos y presionar **Execute**.
+
+Las rutas de Mocks solo están disponibles con `NODE_ENV=development`. `/logger-test` es una herramienta de validación y no una funcionalidad de negocio. Como ShipNow todavía no implementa autenticación, no se documentan respuestas `401` o `403` inexistentes.
 
 ## Logging profesional
 
@@ -226,6 +267,10 @@ Los services no dependen de Express y los repositories no construyen respuestas 
 | `PRODUCT_NOT_FOUND` | 404 | El producto solicitado no existe |
 | `USER_NOT_FOUND` | 404 | El usuario solicitado no existe |
 | `USER_ALREADY_EXISTS` | 409 | El email ya está registrado |
+| `ORDER_NOT_FOUND` | 404 | El pedido solicitado no existe |
+| `DELIVERY_NOT_FOUND` | 404 | La entrega solicitada no existe |
+| `INVALID_ORDER_STATUS` | 400 | El estado del pedido no es válido |
+| `INVALID_DELIVERY_STATUS` | 400 | El estado de la entrega no es válido |
 | `INVALID_MOCK_AMOUNT` | 400 | La cantidad de mocks es inválida |
 | `INVALID_MOCK_DATA` | 400 | Los datos o relaciones de mocks son inválidos |
 | `MOCK_GENERATION_ERROR` | 500 | Falló la generación o carga de mocks |
@@ -306,7 +351,7 @@ Si no se envía `qty`, se generan 10 usuarios. Se aceptan cantidades enteras ent
 GET /api/mocks/mockingorders?qty=10
 ```
 
-Los pedidos generados contienen un usuario simulado, dirección, estado y prioridad válidos.
+Los pedidos generados contienen un usuario simulado, dirección, items, estado y prioridad válidos.
 
 ### Generar productos
 
@@ -431,10 +476,12 @@ Las inserciones del módulo pasan por `MockRepository`. Si MongoDB falla durante
 
 ## Funcionalidades disponibles
 
-Se mantienen las rutas CRUD anteriores:
+Se encuentran disponibles los siguientes módulos principales:
 
 - `/api/products`
 - `/api/users`
+- `/api/orders`
+- `/api/deliveries`
 
 También se mantienen los mocks de usuarios, pedidos, productos y entregas, junto con sus relaciones y constantes de dominio.
 
@@ -445,6 +492,9 @@ La aplicación incorpora además:
 - integración del logger con errores y mocks;
 - persistencia y rotación diaria;
 - endpoint `GET /logger-test`.
+- documentación OpenAPI separada por módulos;
+- schemas reutilizables;
+- Swagger UI disponible en `/api/docs/`.
 
 ## Aclaración sobre las contraseñas
 

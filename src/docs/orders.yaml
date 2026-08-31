@@ -1,0 +1,256 @@
+paths:
+  /api/orders:
+    get:
+      tags:
+        - Orders
+      summary: Listar pedidos
+      description: Devuelve todos los pedidos con el usuario relacionado y sin exponer contraseñas.
+      responses:
+        '200':
+          description: Lista de pedidos obtenida correctamente
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    required:
+                      - data
+                    properties:
+                      data:
+                        type: object
+                        required:
+                          - orders
+                        properties:
+                          orders:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Order'
+        '500':
+          description: INTERNAL_SERVER_ERROR - Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      tags:
+        - Orders
+      summary: Crear un pedido
+      description: Crea un pedido relacionado con un usuario existente y con al menos un item.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - user
+                - deliveryAddress
+                - items
+              properties:
+                user:
+                  $ref: '#/components/schemas/ObjectId'
+                deliveryAddress:
+                  type: string
+                  example: Av. Corrientes 1234
+                items:
+                  type: array
+                  minItems: 1
+                  items:
+                    $ref: '#/components/schemas/OrderItem'
+                status:
+                  type: string
+                  enum:
+                    - created
+                    - assigned
+                    - picked_up
+                    - in_transit
+                    - delivered
+                    - cancelled
+                  default: created
+                priority:
+                  type: string
+                  enum:
+                    - low
+                    - normal
+                    - high
+                  default: normal
+            example:
+              user: 6a94b24d807d19afddf0fb89
+              deliveryAddress: Av. Corrientes 1234
+              items:
+                - name: Teclado mecanico
+                  quantity: 2
+                  price: 25000
+              priority: normal
+      responses:
+        '201':
+          description: Pedido creado correctamente
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    required:
+                      - data
+                    properties:
+                      data:
+                        type: object
+                        required:
+                          - order
+                        properties:
+                          order:
+                            $ref: '#/components/schemas/Order'
+        '400':
+          description: VALIDATION_ERROR o INVALID_ID - Datos o identificador inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: USER_NOT_FOUND - El usuario indicado no existe
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: INTERNAL_SERVER_ERROR - Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/orders/{id}:
+    get:
+      tags:
+        - Orders
+      summary: Obtener un pedido por ID
+      description: Devuelve un pedido con su usuario relacionado.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Identificador del pedido
+          schema:
+            $ref: '#/components/schemas/ObjectId'
+      responses:
+        '200':
+          description: Pedido obtenido correctamente
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    required:
+                      - data
+                    properties:
+                      data:
+                        type: object
+                        required:
+                          - order
+                        properties:
+                          order:
+                            $ref: '#/components/schemas/Order'
+        '400':
+          description: INVALID_ID - El identificador no tiene un formato válido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: ORDER_NOT_FOUND - El pedido no existe
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: INTERNAL_SERVER_ERROR - Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/orders/{id}/status:
+    patch:
+      tags:
+        - Orders
+      summary: Actualizar el estado de un pedido
+      description: Actualiza únicamente el estado utilizando uno de los valores admitidos por ShipNow.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Identificador del pedido
+          schema:
+            $ref: '#/components/schemas/ObjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  type: string
+                  enum:
+                    - created
+                    - assigned
+                    - picked_up
+                    - in_transit
+                    - delivered
+                    - cancelled
+            example:
+              status: in_transit
+      responses:
+        '200':
+          description: Estado del pedido actualizado correctamente
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    required:
+                      - data
+                    properties:
+                      data:
+                        type: object
+                        required:
+                          - order
+                        properties:
+                          order:
+                            $ref: '#/components/schemas/Order'
+        '400':
+          description: INVALID_ID o INVALID_ORDER_STATUS - ID o estado inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidId:
+                  value:
+                    status: error
+                    error: INVALID_ID
+                    message: El identificador proporcionado no es válido
+                invalidStatus:
+                  value:
+                    status: error
+                    error: INVALID_ORDER_STATUS
+                    message: El estado indicado no es válido para un pedido
+        '404':
+          description: ORDER_NOT_FOUND - El pedido no existe
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: INTERNAL_SERVER_ERROR - Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'

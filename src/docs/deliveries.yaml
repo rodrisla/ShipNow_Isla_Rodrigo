@@ -1,0 +1,238 @@
+paths:
+  /api/deliveries:
+    get:
+      tags:
+        - Deliveries
+      summary: Listar entregas
+      description: Devuelve las entregas con el pedido, cliente y repartidor relacionados.
+      responses:
+        '200':
+          description: Lista de entregas obtenida correctamente
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    required:
+                      - data
+                    properties:
+                      data:
+                        type: object
+                        required:
+                          - deliveries
+                        properties:
+                          deliveries:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Delivery'
+        '500':
+          description: INTERNAL_SERVER_ERROR - Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      tags:
+        - Deliveries
+      summary: Crear una entrega
+      description: Crea una entrega para un pedido existente y permite asignar un repartidor existente.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - order
+              properties:
+                order:
+                  $ref: '#/components/schemas/ObjectId'
+                driver:
+                  nullable: true
+                  allOf:
+                    - $ref: '#/components/schemas/ObjectId'
+                status:
+                  type: string
+                  enum:
+                    - pending
+                    - assigned
+                    - picked_up
+                    - in_transit
+                    - delivered
+                    - cancelled
+                  default: pending
+            example:
+              order: 6a94b5b0befa1cbb83815663
+              driver: 44abfccd2b8d4bdeeaf6fa34
+      responses:
+        '201':
+          description: Entrega creada correctamente
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    required:
+                      - data
+                    properties:
+                      data:
+                        type: object
+                        required:
+                          - delivery
+                        properties:
+                          delivery:
+                            $ref: '#/components/schemas/Delivery'
+        '400':
+          description: VALIDATION_ERROR o INVALID_ID - Datos o identificador inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: ORDER_NOT_FOUND o USER_NOT_FOUND - Pedido o repartidor inexistente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: INTERNAL_SERVER_ERROR - Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/deliveries/{id}:
+    get:
+      tags:
+        - Deliveries
+      summary: Obtener una entrega por ID
+      description: Devuelve una entrega con todas sus relaciones.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Identificador de la entrega
+          schema:
+            $ref: '#/components/schemas/ObjectId'
+      responses:
+        '200':
+          description: Entrega obtenida correctamente
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    required:
+                      - data
+                    properties:
+                      data:
+                        type: object
+                        required:
+                          - delivery
+                        properties:
+                          delivery:
+                            $ref: '#/components/schemas/Delivery'
+        '400':
+          description: INVALID_ID - El identificador no tiene un formato válido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: DELIVERY_NOT_FOUND - La entrega no existe
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: INTERNAL_SERVER_ERROR - Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/deliveries/{id}/status:
+    patch:
+      tags:
+        - Deliveries
+      summary: Actualizar el estado de una entrega
+      description: Actualiza únicamente el estado utilizando uno de los valores admitidos por ShipNow.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Identificador de la entrega
+          schema:
+            $ref: '#/components/schemas/ObjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  type: string
+                  enum:
+                    - pending
+                    - assigned
+                    - picked_up
+                    - in_transit
+                    - delivered
+                    - cancelled
+            example:
+              status: assigned
+      responses:
+        '200':
+          description: Estado de la entrega actualizado correctamente
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    required:
+                      - data
+                    properties:
+                      data:
+                        type: object
+                        required:
+                          - delivery
+                        properties:
+                          delivery:
+                            $ref: '#/components/schemas/Delivery'
+        '400':
+          description: INVALID_ID o INVALID_DELIVERY_STATUS - ID o estado inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidId:
+                  value:
+                    status: error
+                    error: INVALID_ID
+                    message: El identificador proporcionado no es válido
+                invalidStatus:
+                  value:
+                    status: error
+                    error: INVALID_DELIVERY_STATUS
+                    message: El estado indicado no es válido para una entrega
+        '404':
+          description: DELIVERY_NOT_FOUND - La entrega no existe
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: INTERNAL_SERVER_ERROR - Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
