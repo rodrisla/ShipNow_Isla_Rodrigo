@@ -33,3 +33,13 @@ export const DELIVERY_STATUS = Object.freeze({
   DELIVERED: 'delivered',
   CANCELLED: 'cancelled'
 });
+
+export const USER_DOCUMENT_TYPES = Object.freeze({
+  DNI: 'dni',
+  DRIVER_LICENSE: 'driver_license',
+  INSURANCE: 'insurance'
+});
+
+export const DELIVERY_DOCUMENT_TYPES = Object.freeze({
+  RECEIPT: 'delivery_receipt'
+});

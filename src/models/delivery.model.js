@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import { DELIVERY_STATUS } from '../constants/index.js';
+import { fileMetadataSchema } from './schemas/file-metadata.schema.js';
 
 const deliverySchema = new mongoose.Schema(
   {
@@ -17,6 +18,10 @@ const deliverySchema = new mongoose.Schema(
       type: String,
       enum: Object.values(DELIVERY_STATUS),
       default: DELIVERY_STATUS.PENDING
+    },
+    receipts: {
+      type: [fileMetadataSchema],
+      default: []
     }
   },
   {

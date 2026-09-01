@@ -35,6 +35,50 @@ components:
           type: string
           example: Los datos enviados no son válidos
 
+    FileMetadata:
+      type: object
+      required:
+        - originalName
+        - storedName
+        - path
+        - mimeType
+        - size
+        - documentType
+        - uploadedAt
+      properties:
+        originalName:
+          type: string
+          example: dni-usuario.pdf
+        storedName:
+          type: string
+          example: 1788230271701-8a291d89-3861-491e-bdb5-4566c0a3bad0.pdf
+        path:
+          type: string
+          example: uploads/users/documents/1788230271701-archivo.pdf
+        mimeType:
+          type: string
+          enum:
+            - application/pdf
+            - image/jpeg
+            - image/png
+          example: application/pdf
+        size:
+          type: integer
+          minimum: 1
+          maximum: 5242880
+          example: 2048
+        documentType:
+          type: string
+          enum:
+            - dni
+            - driver_license
+            - insurance
+            - delivery_receipt
+          example: dni
+        uploadedAt:
+          type: string
+          format: date-time
+
     User:
       type: object
       required:
@@ -66,6 +110,12 @@ components:
         active:
           type: boolean
           example: true
+        documents:
+          type: array
+          description: Metadatos de los documentos asociados al usuario
+          items:
+            $ref: "#/components/schemas/FileMetadata"
+          default: []
         createdAt:
           type: string
           format: date-time
@@ -209,6 +259,12 @@ components:
             - delivered
             - cancelled
           example: pending
+        receipts:
+          type: array
+          description: Metadatos de los comprobantes asociados a la entrega
+          items:
+            $ref: "#/components/schemas/FileMetadata"
+          default: []
         createdAt:
           type: string
           format: date-time

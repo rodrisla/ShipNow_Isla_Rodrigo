@@ -9,7 +9,7 @@ const swaggerOptions = {
       title: 'ShipNow API',
       version: '1.0.0',
       description:
-        'API para administrar usuarios, productos, pedidos, entregas y datos de prueba de ShipNow.'
+        'API para administrar usuarios, productos, pedidos, entregas, documentos, comprobantes y datos de prueba de ShipNow.'
     },
     servers: [
       {
@@ -20,7 +20,7 @@ const swaggerOptions = {
     tags: [
       {
         name: 'Users',
-        description: 'Administración de usuarios de ShipNow'
+        description: 'Administración de usuarios y sus documentos'
       },
       {
         name: 'Products',
@@ -32,7 +32,7 @@ const swaggerOptions = {
       },
       {
         name: 'Deliveries',
-        description: 'Creación, consulta y actualización de entregas'
+        description: 'Creación, consulta, actualización y comprobantes de entregas'
       },
       {
         name: 'Mocks',

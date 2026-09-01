@@ -29,11 +29,19 @@ class DeliveryRepository {
     return delivery.populate(deliveryPopulate);
   }
 
+  async addReceipt(id, receipt) {
+    return DeliveryModel.findByIdAndUpdate(
+      id,
+      { $push: { receipts: receipt } },
+      { returnDocument: 'after', runValidators: true }
+    ).populate(deliveryPopulate);
+  }
+
   async updateStatus(id, status) {
     return DeliveryModel.findByIdAndUpdate(
       id,
       { status },
-      { new: true, runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     ).populate(deliveryPopulate);
   }
 }

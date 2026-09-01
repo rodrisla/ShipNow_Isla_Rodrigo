@@ -1,5 +1,11 @@
+import { logger } from '../config/logger.js';
+import { USER_DOCUMENT_TYPES } from '../constants/index.js';
 import { AppError, ERROR_CODES } from '../errors/index.js';
 import { userRepository } from '../repositories/user.repository.js';
+import {
+  buildFileMetadata,
+  removeStoredFile
+} from '../utils/file.utils.js';
 
 const normalizeEmail = (email) => {
   return typeof email === 'string'
@@ -52,6 +58,36 @@ class UserService {
     });
 
     return hidePassword(createdUser);
+  }
+
+  async addDocument(id, file, documentType) {
+    try {
+      if (!file) {
+        throw new AppError(ERROR_CODES.FILE_REQUIRED);
+      }
+
+      if (
+        !Object.values(USER_DOCUMENT_TYPES).includes(documentType)
+      ) {
+        throw new AppError(ERROR_CODES.INVALID_DOCUMENT_TYPE);
+      }
+
+      const metadata = buildFileMetadata(file, documentType);
+      const user = await userRepository.addDocument(id, metadata);
+
+      if (!user) {
+        throw new AppError(ERROR_CODES.USER_NOT_FOUND);
+      }
+
+      logger.info(
+        `Documento ${metadata.storedName} asociado al usuario ${user._id}`
+      );
+
+      return hidePassword(user);
+    } catch (error) {
+      await removeStoredFile(file);
+      throw error;
+    }
   }
 
   async updateById(id, userData) {

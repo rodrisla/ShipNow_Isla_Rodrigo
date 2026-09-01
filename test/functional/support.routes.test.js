@@ -30,9 +30,13 @@ describe('Endpoints de soporte', () => {
     for (const fragment of [
       'ShipNow API',
       '/api/users',
+      '/api/users/{id}/documents',
+      '/api/deliveries/{id}/receipts',
       '/api/orders',
       '/api/mocks/generateData',
-      '/logger-test'
+      '/logger-test',
+      'multipart/form-data',
+      'FileMetadata'
     ]) {
       expect(specResponse.text).to.include(fragment);
     }

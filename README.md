@@ -1,8 +1,8 @@
-# ShipNow - Pre-entrega Módulo 6
+# ShipNow - Pre-entrega Módulo 7
 
-En esta pre-entrega se incorporó una suite de testing funcional con Mocha, Chai y Supertest. Las pruebas validan endpoints reales de ShipNow, casos exitosos, errores esperados y la estructura completa de las respuestas.
+En esta pre-entrega se incorporó la carga y gestión de documentos y comprobantes con Multer. Los archivos se validan, se almacenan en carpetas organizadas y sus metadatos quedan asociados a usuarios y entregas en MongoDB.
 
-El entorno de testing utiliza una base MongoDB separada y descartable, datos controlados y limpieza automática.
+La implementación se integra con la arquitectura por capas, los errores centralizados, Winston, Swagger y la suite funcional. Los archivos físicos no se guardan en MongoDB ni se suben al repositorio.
 
 ## Versiones del proyecto
 
@@ -13,7 +13,8 @@ Cada pre-entrega se encuentra separada en su propia rama:
 - [Pre-entrega 3](https://github.com/rodrisla/ShipNow_Isla_Rodrigo/tree/pre-entrega-3)
 - [Pre-entrega 4](https://github.com/rodrisla/ShipNow_Isla_Rodrigo/tree/pre-entrega-4)
 - [Pre-entrega 5](https://github.com/rodrisla/ShipNow_Isla_Rodrigo/tree/pre-entrega-5)
-- [Pre-entrega 6](https://github.com/rodrisla/ShipNow_Isla_Rodrigo/tree/pre-entrega-6) - Rama actual
+- [Pre-entrega 6](https://github.com/rodrisla/ShipNow_Isla_Rodrigo/tree/pre-entrega-6)
+- [Pre-entrega 7](https://github.com/rodrisla/ShipNow_Isla_Rodrigo/tree/pre-entrega-7) - Rama actual
 
 ## Tecnologías utilizadas
 
@@ -30,13 +31,14 @@ Cada pre-entrega se encuentra separada en su propia rama:
 - Mocha
 - Chai
 - Supertest
+- Multer
 
 ## Cómo ejecutar el proyecto
 
-Clonar la rama de la pre-entrega 6:
+Clonar la rama de la pre-entrega 7:
 
 ```bash
-git clone --branch pre-entrega-6 https://github.com/rodrisla/ShipNow_Isla_Rodrigo.git
+git clone --branch pre-entrega-7 https://github.com/rodrisla/ShipNow_Isla_Rodrigo.git
 ```
 
 Entrar en la carpeta e instalar las dependencias:
@@ -60,9 +62,56 @@ Ejecutar el proyecto:
 npm run dev
 ```
 
+## Carga de archivos con Multer
+
+ShipNow utiliza Multer mediante una configuración centralizada en `src/config/multer.config.js`. Los routers solo seleccionan el middleware correspondiente y no contienen lógica de almacenamiento.
+
+### Endpoints de carga
+
+| Entidad | Método y ruta | Campo de archivo | Campo adicional |
+|---|---|---|---|
+| Usuario | `POST /api/users/:id/documents` | `document` | `documentType` obligatorio |
+| Entrega | `POST /api/deliveries/:id/receipts` | `receipt` | No requiere campos adicionales |
+
+Los tipos documentales admitidos para usuarios son:
+
+- `dni`;
+- `driver_license`;
+- `insurance`.
+
+Los comprobantes de entrega se registran automáticamente con el tipo `delivery_receipt`.
+
+### Validaciones de archivos
+
+- El archivo es obligatorio.
+- El campo multipart debe llamarse `document` o `receipt`, según el endpoint.
+- Se aceptan archivos PDF, JPG, JPEG y PNG.
+- El MIME type debe coincidir con una extensión permitida.
+- El tamaño máximo es de **5 MB**.
+- El tipo documental debe pertenecer al listado permitido.
+- El usuario o la entrega deben existir antes de conservar la asociación.
+
+Los errores mantienen el formato general `{ status, error, message }` y son registrados por Winston.
+
+### Almacenamiento y metadatos
+
+Los documentos se almacenan en `uploads/users/documents/` y los comprobantes en `uploads/deliveries/receipts/`. Durante los tests se utiliza exclusivamente `uploads/test/`.
+
+MongoDB guarda únicamente estos metadatos:
+
+- nombre original;
+- nombre generado;
+- ruta relativa;
+- MIME type;
+- tamaño en bytes;
+- tipo de documento;
+- fecha de carga.
+
+La carpeta `uploads/` está incluida en `.gitignore`. Si la entidad no existe, el tipo documental es inválido o falla la asociación, el archivo físico recién generado se elimina para evitar archivos huérfanos.
+
 ## Testing funcional automatizado
 
-La Pre-entrega 6 incorpora una suite de **19 tests funcionales** ejecutados contra la aplicación Express real.
+La suite actual incorpora **28 tests funcionales** ejecutados contra la aplicación Express real.
 
 Las herramientas utilizadas son:
 
@@ -84,7 +133,7 @@ NODE_ENV=test
 
 El repositorio incluye `.env.test.example` como plantilla. El archivo privado `.env.test` está ignorado por Git y debe apuntar exclusivamente a una base descartable llamada `shipnow_test`.
 
-El hook global `test/root-hooks.js` verifica `NODE_ENV=test` y comprueba el nombre de la base antes de realizar cualquier limpieza. Si la base conectada no contiene `test`, la suite se detiene para proteger los datos de desarrollo.
+El hook global `test/root-hooks.js` verifica `NODE_ENV=test` y comprueba el nombre de la base antes de realizar cualquier limpieza. Si la base conectada no se llama exactamente `shipnow_test`, la suite se detiene para proteger los datos de desarrollo.
 
 ### Ejecutar los tests
 
@@ -105,6 +154,7 @@ No es necesario iniciar el servidor ni utilizar Postman para ejecutar la suite.
 |---|---|
 | Users | Listado, creación válida, datos incompletos y ausencia de contraseñas |
 | Orders | Listado, creación, consulta por ID, cambio de estado, datos incompletos, recurso inexistente y estado inválido |
+| Uploads | Documento y comprobante válidos, archivo faltante, tipo documental inválido, MIME inválido, tamaño excedido, campo incorrecto, entidad inexistente y limpieza física |
 | Mocks | Usuarios, pedidos, productos, carga relacionada, cantidades inválidas y relaciones inválidas |
 | Logger | Ejecución de los niveles `debug`, `http`, `info`, `warning`, `error` y `fatal` |
 | Swagger | Acceso a Swagger UI y contenido principal de la especificación |
@@ -114,9 +164,9 @@ No es necesario iniciar el servidor ni utilizar Postman para ejecutar la suite.
 
 Los payloads se generan mediante factories deterministas y cada test puede ejecutarse de forma independiente.
 
-Antes de cada test se eliminan los registros existentes. Al terminar la suite se vuelven a limpiar las colecciones y se cierra la conexión de Mongoose. De esta forma no quedan usuarios, pedidos, productos ni entregas creados por las pruebas.
+Antes de cada test se eliminan los registros existentes y el contenido aislado de `uploads/test`. Al terminar la suite se vuelven a limpiar las colecciones y se cierra la conexión de Mongoose. De esta forma no quedan usuarios, pedidos, productos, entregas ni archivos creados por las pruebas.
 
-La suite fue ejecutada dos veces consecutivas con **19 tests aprobados** y todas las colecciones de `shipnow_test` quedaron en cero.
+La suite fue ejecutada dos veces consecutivas con **28 tests aprobados** y todas las colecciones de `shipnow_test` quedaron en cero.
 
 ## Documentación interactiva con Swagger
 
@@ -139,11 +189,11 @@ http://localhost:8080/api/docs/
 | Mocks | `/api/mocks` |
 | Logger | `/logger-test` |
 
-La especificación reúne **16 paths y 24 operaciones HTTP**, organizadas por tags.
+La especificación reúne **18 paths y 26 operaciones HTTP**, organizadas por tags.
 
 ### Schemas reutilizables
 
-Swagger incluye schemas compartidos para usuarios, productos, pedidos, items de pedido, entregas, identificadores de MongoDB y respuestas exitosas o de error.
+Swagger incluye schemas compartidos para usuarios, productos, pedidos, items de pedido, entregas, metadatos de archivos, identificadores de MongoDB y respuestas exitosas o de error.
 
 Cada endpoint documenta su método, ruta, descripción, parámetros, body, respuesta exitosa y posibles errores reales de la API.
 
@@ -197,6 +247,7 @@ El logger registra los siguientes eventos:
 - peticiones HTTP con método, URL, status y duración;
 - generación de usuarios, pedidos y productos mock;
 - carga de datos mock en MongoDB;
+- carga exitosa de documentos y comprobantes asociados a sus entidades;
 - validaciones y errores controlados como `warning`;
 - rutas inexistentes como `warning`;
 - errores inesperados y fallas de MongoDB como `error`.
@@ -334,6 +385,12 @@ Los services no dependen de Express y los repositories no construyen respuestas 
 | `DELIVERY_NOT_FOUND` | 404 | La entrega solicitada no existe |
 | `INVALID_ORDER_STATUS` | 400 | El estado del pedido no es válido |
 | `INVALID_DELIVERY_STATUS` | 400 | El estado de la entrega no es válido |
+| `FILE_REQUIRED` | 400 | No se adjuntó el archivo esperado |
+| `INVALID_FILE_TYPE` | 400 | MIME type o extensión no permitidos |
+| `FILE_TOO_LARGE` | 413 | El archivo supera los 5 MB |
+| `INVALID_FILE_FIELD` | 400 | El campo multipart no coincide con el esperado |
+| `INVALID_DOCUMENT_TYPE` | 400 | El tipo documental no está permitido |
+| `FILE_STORAGE_ERROR` | 500 | No se pudo almacenar el archivo |
 | `INVALID_MOCK_AMOUNT` | 400 | La cantidad de mocks es inválida |
 | `INVALID_MOCK_DATA` | 400 | Los datos o relaciones de mocks son inválidos |
 | `MOCK_GENERATION_ERROR` | 500 | Falló la generación o carga de mocks |
@@ -350,6 +407,8 @@ El middleware también transforma automáticamente errores de Mongoose y MongoDB
 Las pruebas manuales de esta entrega se realizaron desde Postman con el servidor iniciado en `http://localhost:8080`.
 
 Para las peticiones `POST`, se seleccionó `Body → raw → JSON` y se agregó automáticamente el encabezado `Content-Type: application/json`.
+
+Para las cargas de archivos se utiliza `Body → form-data`; los campos `document` y `receipt` deben configurarse como tipo **File**.
 
 | Caso | Método | URL | Respuesta esperada |
 |---|---|---|---|
@@ -392,13 +451,13 @@ Respuesta esperada: `400 VALIDATION_ERROR` con los mensajes de validación del m
 
 ## Módulo de mocks
 
-Las rutas de mocks se encuentran bajo `/api/mocks` y solo están disponibles cuando la aplicación se ejecuta con:
+Las rutas de mocks se encuentran bajo `/api/mocks` y están disponibles en desarrollo y durante los tests aislados. Para utilizarlas manualmente, ejecutar con:
 
 ```env
 NODE_ENV=development
 ```
 
-En otro entorno, estas rutas responden `404` mediante la misma capa centralizada.
+En producción, estas rutas responden `404` mediante la misma capa centralizada.
 
 ### Generar usuarios sin guardar
 
@@ -545,6 +604,8 @@ Se encuentran disponibles los siguientes módulos principales:
 - `/api/users`
 - `/api/orders`
 - `/api/deliveries`
+- `POST /api/users/:id/documents`
+- `POST /api/deliveries/:id/receipts`
 
 También se mantienen los mocks de usuarios, pedidos, productos y entregas, junto con sus relaciones y constantes de dominio.
 
@@ -560,7 +621,11 @@ La aplicación incorpora además:
 - Swagger UI disponible en `/api/docs/`;
 - testing funcional con Mocha, Chai y Supertest;
 - entorno y base de testing separados;
-- limpieza automática de datos de prueba.
+- limpieza automática de datos de prueba;
+- configuración centralizada de Multer;
+- documentos y comprobantes asociados mediante metadatos;
+- limpieza automática de archivos de testing;
+- carpeta `uploads/` excluida del repositorio.
 
 ## Aclaración sobre las contraseñas
 

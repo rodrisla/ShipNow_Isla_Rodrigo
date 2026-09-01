@@ -29,6 +29,30 @@ export const ERRORS_DICTIONARY = Object.freeze({
     statusCode: 400,
     message: 'El estado indicado no es válido para una entrega'
   },
+  [ERROR_CODES.FILE_REQUIRED]: {
+    statusCode: 400,
+    message: 'Se debe adjuntar un archivo'
+  },
+  [ERROR_CODES.INVALID_FILE_TYPE]: {
+    statusCode: 400,
+    message: 'El tipo de archivo no está permitido'
+  },
+  [ERROR_CODES.FILE_TOO_LARGE]: {
+    statusCode: 413,
+    message: 'El archivo supera el tamaño máximo permitido'
+  },
+  [ERROR_CODES.INVALID_FILE_FIELD]: {
+    statusCode: 400,
+    message: 'El campo utilizado para adjuntar el archivo no es válido'
+  },
+  [ERROR_CODES.INVALID_DOCUMENT_TYPE]: {
+    statusCode: 400,
+    message: 'El tipo de documento indicado no es válido'
+  },
+  [ERROR_CODES.FILE_STORAGE_ERROR]: {
+    statusCode: 500,
+    message: 'No se pudo guardar el archivo'
+  },
   [ERROR_CODES.INVALID_MOCK_AMOUNT]: {
     statusCode: 400,
     message: 'La cantidad de datos a generar no es válida'

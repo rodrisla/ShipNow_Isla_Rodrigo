@@ -1,0 +1,236 @@
+components:
+  responses:
+    UserUploadBadRequest:
+      description: Datos multipart, identificador, archivo o tipo de documento inválidos
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            fileRequired:
+              summary: Falta el archivo
+              value:
+                status: error
+                error: FILE_REQUIRED
+                message: Se debe adjuntar un archivo en el campo "document"
+            invalidFileType:
+              summary: Tipo de archivo no permitido
+              value:
+                status: error
+                error: INVALID_FILE_TYPE
+                message: El tipo de archivo no está permitido
+            invalidFileField:
+              summary: Nombre de campo incorrecto
+              value:
+                status: error
+                error: INVALID_FILE_FIELD
+                message: El campo de archivo debe llamarse "document"
+            invalidDocumentType:
+              summary: Tipo de documento no admitido
+              value:
+                status: error
+                error: INVALID_DOCUMENT_TYPE
+                message: El tipo de documento indicado no es válido
+            invalidId:
+              summary: Identificador de usuario inválido
+              value:
+                status: error
+                error: INVALID_ID
+                message: El identificador proporcionado no es válido
+
+    ReceiptUploadBadRequest:
+      description: Datos multipart, identificador o archivo inválidos
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            fileRequired:
+              summary: Falta el archivo
+              value:
+                status: error
+                error: FILE_REQUIRED
+                message: Se debe adjuntar un archivo en el campo "receipt"
+            invalidFileType:
+              summary: Tipo de archivo no permitido
+              value:
+                status: error
+                error: INVALID_FILE_TYPE
+                message: El tipo de archivo no está permitido
+            invalidFileField:
+              summary: Nombre de campo incorrecto
+              value:
+                status: error
+                error: INVALID_FILE_FIELD
+                message: El campo de archivo debe llamarse "receipt"
+            invalidId:
+              summary: Identificador de entrega inválido
+              value:
+                status: error
+                error: INVALID_ID
+                message: El identificador proporcionado no es válido
+
+    FileTooLargeResponse:
+      description: El archivo supera el límite máximo de 5 MB
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status: error
+            error: FILE_TOO_LARGE
+            message: El archivo supera el tamaño máximo permitido
+
+    FileStorageErrorResponse:
+      description: No se pudo almacenar o asociar el archivo
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            storageError:
+              summary: Error de almacenamiento
+              value:
+                status: error
+                error: FILE_STORAGE_ERROR
+                message: No se pudo guardar el archivo
+            internalError:
+              summary: Error interno inesperado
+              value:
+                status: error
+                error: INTERNAL_SERVER_ERROR
+                message: Error interno del servidor
+
+paths:
+  /api/users/{id}/documents:
+    post:
+      tags:
+        - Users
+      summary: Cargar un documento de usuario
+      description: Guarda un archivo PDF, JPG, JPEG o PNG de hasta 5 MB y asocia únicamente sus metadatos al usuario.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Identificador MongoDB del usuario
+          schema:
+            $ref: '#/components/schemas/ObjectId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - document
+                - documentType
+              properties:
+                document:
+                  type: string
+                  format: binary
+                  description: Archivo PDF, JPG, JPEG o PNG de hasta 5 MB
+                documentType:
+                  type: string
+                  description: Tipo documental asociado al usuario
+                  enum:
+                    - dni
+                    - driver_license
+                    - insurance
+                  example: dni
+      responses:
+        '201':
+          description: Documento guardado y asociado correctamente
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    required:
+                      - data
+                    properties:
+                      data:
+                        type: object
+                        required:
+                          - user
+                        properties:
+                          user:
+                            $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/UserUploadBadRequest'
+        '404':
+          description: El usuario indicado no existe
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                error: USER_NOT_FOUND
+                message: No se encontró el usuario solicitado
+        '413':
+          $ref: '#/components/responses/FileTooLargeResponse'
+        '500':
+          $ref: '#/components/responses/FileStorageErrorResponse'
+
+  /api/deliveries/{id}/receipts:
+    post:
+      tags:
+        - Deliveries
+      summary: Cargar un comprobante de entrega
+      description: Guarda un comprobante PDF, JPG, JPEG o PNG de hasta 5 MB y asocia únicamente sus metadatos a la entrega.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Identificador MongoDB de la entrega
+          schema:
+            $ref: '#/components/schemas/ObjectId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - receipt
+              properties:
+                receipt:
+                  type: string
+                  format: binary
+                  description: Comprobante PDF, JPG, JPEG o PNG de hasta 5 MB
+      responses:
+        '201':
+          description: Comprobante guardado y asociado correctamente
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    required:
+                      - data
+                    properties:
+                      data:
+                        type: object
+                        required:
+                          - delivery
+                        properties:
+                          delivery:
+                            $ref: '#/components/schemas/Delivery'
+        '400':
+          $ref: '#/components/responses/ReceiptUploadBadRequest'
+        '404':
+          description: La entrega indicada no existe
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                error: DELIVERY_NOT_FOUND
+                message: No se encontró la entrega solicitada
+        '413':
+          $ref: '#/components/responses/FileTooLargeResponse'
+        '500':
+          $ref: '#/components/responses/FileStorageErrorResponse'

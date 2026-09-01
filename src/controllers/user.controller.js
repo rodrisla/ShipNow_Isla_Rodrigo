@@ -40,6 +40,23 @@ class UserController {
     }
   }
 
+  async uploadDocument(req, res, next) {
+    try {
+      const user = await userService.addDocument(
+        req.params.id,
+        req.file,
+        req.body?.documentType
+      );
+
+      return res.status(201).json({
+        status: 'success',
+        data: { user }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async updateById(req, res, next) {
     try {
       const user = await userService.updateById(

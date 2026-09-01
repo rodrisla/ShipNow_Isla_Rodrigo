@@ -17,9 +17,17 @@ class UserRepository {
     return UserModel.create(userData);
   }
 
+  async addDocument(id, document) {
+    return UserModel.findByIdAndUpdate(
+      id,
+      { $push: { documents: document } },
+      { returnDocument: 'after', runValidators: true }
+    );
+  }
+
   async updateById(id, userData) {
     return UserModel.findByIdAndUpdate(id, userData, {
-      new: true,
+      returnDocument: 'after',
       runValidators: true
     });
   }

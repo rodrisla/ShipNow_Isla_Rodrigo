@@ -40,6 +40,22 @@ class DeliveryController {
     }
   }
 
+  async uploadReceipt(req, res, next) {
+    try {
+      const delivery = await deliveryService.addReceipt(
+        req.params.id,
+        req.file
+      );
+
+      return res.status(201).json({
+        status: 'success',
+        data: { delivery }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async updateStatus(req, res, next) {
     try {
       const delivery = await deliveryService.updateStatus(
