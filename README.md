@@ -1,8 +1,20 @@
-# ShipNow - Pre-entrega Módulo 7
+# ShipNow - Pre-entrega Módulo 8
 
-En esta pre-entrega se incorporó la carga y gestión de documentos y comprobantes con Multer. Los archivos se validan, se almacenan en carpetas organizadas y sus metadatos quedan asociados a usuarios y entregas en MongoDB.
+Esta pre-entrega prepara el proyecto para un escenario cercano a producción mediante paginación y filtros en MongoDB, validación temprana de configuración, límites de payload y archivos, health check, políticas por entorno y ejecución contenerizada con Docker.
 
-La implementación se integra con la arquitectura por capas, los errores centralizados, Winston, Swagger y la suite funcional. Los archivos físicos no se guardan en MongoDB ni se suben al repositorio.
+## Alcance de la Pre-entrega 8
+
+- Listados paginados con límite efectivo máximo de 100 resultados.
+- Filtros aplicados en MongoDB antes de recuperar documentos.
+- Consultas de lectura con `lean()`, `skip()`, `limit()` y conteo total.
+- Payload JSON limitado a 100 KB.
+- Archivos limitados a 5 MB y tipos MIME controlados.
+- Variables de entorno validadas antes de iniciar la aplicación.
+- Endpoint público `GET /health` sin información sensible.
+- Mocks y logger-test deshabilitados en producción.
+- Swagger disponible para consultar el contrato de la API.
+- Imagen Docker reproducible, no-root y con health check integrado.
+- Contexto Docker sin dependencias locales, secretos, logs, uploads ni tests.
 
 ## Versiones del proyecto
 
@@ -14,318 +26,379 @@ Cada pre-entrega se encuentra separada en su propia rama:
 - [Pre-entrega 4](https://github.com/rodrisla/ShipNow_Isla_Rodrigo/tree/pre-entrega-4)
 - [Pre-entrega 5](https://github.com/rodrisla/ShipNow_Isla_Rodrigo/tree/pre-entrega-5)
 - [Pre-entrega 6](https://github.com/rodrisla/ShipNow_Isla_Rodrigo/tree/pre-entrega-6)
-- [Pre-entrega 7](https://github.com/rodrisla/ShipNow_Isla_Rodrigo/tree/pre-entrega-7) - Rama actual
+- [Pre-entrega 7](https://github.com/rodrisla/ShipNow_Isla_Rodrigo/tree/pre-entrega-7)
+- [Pre-entrega 8](https://github.com/rodrisla/ShipNow_Isla_Rodrigo/tree/pre-entrega-8) - Rama actual
 
-## Tecnologías utilizadas
+## Tecnologías
 
-- Node.js
+- Node.js 24 Alpine en Docker
 - Express
-- MongoDB
-- Mongoose
-- Faker
-- dotenv
-- Winston
-- winston-daily-rotate-file
-- swagger-jsdoc
-- swagger-ui-express
-- Mocha
-- Chai
-- Supertest
+- MongoDB y Mongoose
 - Multer
+- Winston y winston-daily-rotate-file
+- Swagger/OpenAPI
+- Faker
+- Mocha, Chai y Supertest
+- Docker Desktop con backend Linux/WSL 2
 
-## Cómo ejecutar el proyecto
+## Requisitos
 
-Clonar la rama de la pre-entrega 7:
+Para ejecutar el proyecto localmente:
+
+- Node.js 20.19 o superior;
+- npm 10 o superior;
+- una instancia o clúster de MongoDB accesible.
+
+Para ejecutarlo contenerizado también se necesita Docker Desktop o un motor Docker compatible con contenedores Linux.
+
+## Variables de entorno
+
+ShipNow centraliza su configuración en `src/config/env.config.js`.
+
+| Variable | Obligatoria | Valores o ejemplo | Uso |
+|---|---|---|---|
+| `PORT` | Sí | `8080` | Puerto HTTP, entero entre 1 y 65535 |
+| `MONGODB_URI` | Sí | `mongodb://localhost:27017/shipnow` | URI de MongoDB con esquema `mongodb://` o `mongodb+srv://` |
+| `NODE_ENV` | Sí | `development`, `test`, `production` | Define el comportamiento por entorno |
+| `LOG_LEVEL` | No | `debug`, `fatal`, `info` | Nivel mínimo del logger; posee un valor predeterminado por entorno |
+
+Valores predeterminados de `LOG_LEVEL`:
+
+| Entorno | Nivel |
+|---|---|
+| `development` | `debug` |
+| `test` | `fatal` |
+| `production` | `info` |
+
+La aplicación falla al inicio con un mensaje claro si falta una variable crítica o si el puerto, la URI, el entorno o el nivel de logs tienen un formato inválido.
+
+El proyecto incluye estas plantillas públicas:
+
+- `.env.example`: desarrollo local;
+- `.env.test.example`: testing aislado;
+- `.env.production.example`: ejecución productiva o Docker.
+
+Los archivos reales `.env`, `.env.test` y `.env.production` están ignorados por Git y nunca se copian dentro de la imagen.
+
+ShipNow todavía no implementa JWT ni consume servicios HTTP externos. Por ese motivo no se agregan secretos JWT ni URLs externas ficticias. Si esas integraciones se incorporan, sus valores deberán sumarse a la validación y a las plantillas, nunca escribirse directamente en el código.
+
+## Ejecución local
+
+Clonar la rama:
 
 ```bash
-git clone --branch pre-entrega-7 https://github.com/rodrisla/ShipNow_Isla_Rodrigo.git
-```
-
-Entrar en la carpeta e instalar las dependencias:
-
-```bash
+git clone --branch pre-entrega-8 https://github.com/rodrisla/ShipNow_Isla_Rodrigo.git
 cd ShipNow_Isla_Rodrigo
-npm install
 ```
 
-Crear un archivo `.env` tomando como referencia `.env.example`:
+Instalar exactamente las versiones registradas en el lockfile:
 
-```env
-PORT=8080
-MONGODB_URI=URI_DE_MONGODB
-NODE_ENV=development
+```bash
+npm ci
 ```
 
-Ejecutar el proyecto:
+Crear el entorno de desarrollo:
+
+```bash
+cp .env.example .env
+```
+
+Reemplazar `MONGODB_URI` por una URI válida y ejecutar:
 
 ```bash
 npm run dev
 ```
 
-## Carga de archivos con Multer
+La API queda disponible por defecto en `http://localhost:8080`.
 
-ShipNow utiliza Multer mediante una configuración centralizada en `src/config/multer.config.js`. Los routers solo seleccionan el middleware correspondiente y no contienen lógica de almacenamiento.
-
-### Endpoints de carga
-
-| Entidad | Método y ruta | Campo de archivo | Campo adicional |
-|---|---|---|---|
-| Usuario | `POST /api/users/:id/documents` | `document` | `documentType` obligatorio |
-| Entrega | `POST /api/deliveries/:id/receipts` | `receipt` | No requiere campos adicionales |
-
-Los tipos documentales admitidos para usuarios son:
-
-- `dni`;
-- `driver_license`;
-- `insurance`.
-
-Los comprobantes de entrega se registran automáticamente con el tipo `delivery_receipt`.
-
-### Validaciones de archivos
-
-- El archivo es obligatorio.
-- El campo multipart debe llamarse `document` o `receipt`, según el endpoint.
-- Se aceptan archivos PDF, JPG, JPEG y PNG.
-- El MIME type debe coincidir con una extensión permitida.
-- El tamaño máximo es de **5 MB**.
-- El tipo documental debe pertenecer al listado permitido.
-- El usuario o la entrega deben existir antes de conservar la asociación.
-
-Los errores mantienen el formato general `{ status, error, message }` y son registrados por Winston.
-
-### Almacenamiento y metadatos
-
-Los documentos se almacenan en `uploads/users/documents/` y los comprobantes en `uploads/deliveries/receipts/`. Durante los tests se utiliza exclusivamente `uploads/test/`.
-
-MongoDB guarda únicamente estos metadatos:
-
-- nombre original;
-- nombre generado;
-- ruta relativa;
-- MIME type;
-- tamaño en bytes;
-- tipo de documento;
-- fecha de carga.
-
-La carpeta `uploads/` está incluida en `.gitignore`. Si la entidad no existe, el tipo documental es inválido o falla la asociación, el archivo físico recién generado se elimina para evitar archivos huérfanos.
-
-## Testing funcional automatizado
-
-La suite actual incorpora **28 tests funcionales** ejecutados contra la aplicación Express real.
-
-Las herramientas utilizadas son:
-
-- **Mocha:** organiza y ejecuta la suite.
-- **Chai:** valida status HTTP, estructura y propiedades de las respuestas.
-- **Supertest:** realiza peticiones sobre `app` sin iniciar un puerto.
-
-`src/app.js` exporta la aplicación y `src/server.js` se ocupa únicamente de conectar MongoDB e iniciar el servidor. Por eso los tests importan Express directamente y no requieren ejecutar `npm run dev`.
-
-### Entorno de testing
-
-Las pruebas utilizan un entorno y una base separados del desarrollo:
-
-```env
-PORT=8081
-MONGODB_URI=URI_DE_MONGODB_CON_BASE_shipnow_test
-NODE_ENV=test
-```
-
-El repositorio incluye `.env.test.example` como plantilla. El archivo privado `.env.test` está ignorado por Git y debe apuntar exclusivamente a una base descartable llamada `shipnow_test`.
-
-El hook global `test/root-hooks.js` verifica `NODE_ENV=test` y comprueba el nombre de la base antes de realizar cualquier limpieza. Si la base conectada no se llama exactamente `shipnow_test`, la suite se detiene para proteger los datos de desarrollo.
-
-### Ejecutar los tests
-
-1. Crear `.env.test` a partir de `.env.test.example`.
-2. Configurar una URI de MongoDB cuya base sea `shipnow_test`.
-3. Instalar dependencias y ejecutar:
+Para ejecutar sin modo watch:
 
 ```bash
-npm install
+npm start
+```
+
+## Performance y control de listados
+
+Todos los listados principales utilizan:
+
+- página predeterminada: 1;
+- límite predeterminado: 10;
+- límite efectivo máximo: 100;
+- validación de enteros positivos;
+- filtros validados contra las constantes del dominio;
+- `countDocuments(filter)` y consulta paginada ejecutados en paralelo;
+- filtros, `skip` y `limit` aplicados en MongoDB;
+- `lean()` para evitar hidratar documentos de solo lectura.
+
+| Endpoint | Filtros admitidos |
+|---|---|
+| `GET /api/users` | `page`, `limit`, `role`, `active` |
+| `GET /api/orders` | `page`, `limit`, `status`, `priority` |
+| `GET /api/deliveries` | `page`, `limit`, `status` |
+| `GET /api/products` | `page`, `limit`, `status` |
+| `GET /api/products/available` | `page`, `limit`; aplica `AVAILABLE` directamente en MongoDB |
+
+Ejemplo:
+
+```http
+GET /api/orders?page=2&limit=10&status=created&priority=high
+```
+
+La respuesta incluye los resultados y metadatos:
+
+```json
+{
+  "status": "success",
+  "data": {
+    "orders": [],
+    "pagination": {
+      "page": 2,
+      "limit": 10,
+      "total": 0,
+      "totalPages": 0,
+      "hasNextPage": false,
+      "hasPreviousPage": false
+    }
+  }
+}
+```
+
+Un `limit` mayor a 100 no amplía la respuesta: se reduce automáticamente a 100. Una página, límite o filtro inválido responde `400` mediante `INVALID_PAGINATION` o `INVALID_FILTER`.
+
+Los cuerpos JSON están limitados a 100 KB. Si se supera ese tamaño, la API responde `413 PAYLOAD_TOO_LARGE`.
+
+## Carga de archivos
+
+Multer se configura una sola vez en `src/config/multer.config.js`; los routers únicamente seleccionan el middleware necesario.
+
+| Entidad | Endpoint | Campo de archivo | Campo adicional |
+|---|---|---|---|
+| Usuario | `POST /api/users/:id/documents` | `document` | `documentType` obligatorio |
+| Entrega | `POST /api/deliveries/:id/receipts` | `receipt` | Ninguno |
+
+Controles aplicados:
+
+- tamaño máximo de 5 MB;
+- PDF, JPG, JPEG y PNG;
+- coincidencia entre MIME type y extensión admitida;
+- nombre exacto del campo multipart;
+- tipo documental perteneciente al dominio;
+- entidad de destino existente;
+- errores centralizados con status `400`, `404`, `413` o `500`;
+- eliminación asíncrona del archivo cuando la asociación falla;
+- directorios creados con APIs asíncronas, sin bloquear el Event Loop.
+
+MongoDB conserva solamente metadatos. Los archivos locales se escriben en `uploads/users/documents/` o `uploads/deliveries/receipts/`, mientras que los tests usan `uploads/test/` y la eliminan al finalizar.
+
+`uploads/` no se sube a Git ni se incorpora a la imagen. En Docker se monta un volumen explícito. Para un despliegue distribuido o con múltiples réplicas se debería reemplazar el filesystem local por almacenamiento de objetos o un volumen persistente administrado.
+
+## Preparación para producción
+
+### Política de endpoints
+
+| Endpoint o grupo | Desarrollo/Test | Producción | Criterio |
+|---|---:|---:|---|
+| `GET /health` | Disponible | Disponible | Monitoreo sin secretos |
+| `/api/docs/` | Disponible | Disponible | Contrato público de esta entrega |
+| `/api/users`, `/api/products`, `/api/orders`, `/api/deliveries` | Disponible | Disponible | Endpoints principales |
+| `/api/mocks/*` | Disponible | `404` | Evita generar datos artificiales |
+| `GET /logger-test` | Disponible | `404` | Herramienta exclusivamente interna |
+
+Como todavía no existe autenticación, los endpoints principales no documentan respuestas `401` o `403` inexistentes.
+
+### Health check
+
+```http
+GET /health
+```
+
+Respuesta:
+
+```json
+{
+  "status": "success",
+  "data": {
+    "service": "ShipNow API",
+    "api": "up",
+    "environment": "production",
+    "uptime": 35.217,
+    "timestamp": "2026-09-08T23:24:47.629Z"
+  }
+}
+```
+
+El endpoint no devuelve la URI de MongoDB, variables del proceso, contraseñas, tokens, secretos, rutas internas ni stacks.
+
+## Logging
+
+Winston utiliza una instancia centralizada. No existen llamadas manuales a `console.log()` en la aplicación.
+
+| Entorno | Salida por consola | Archivos rotados |
+|---|---|---|
+| `development` | `debug`, `http`, `info`, `warning`, `error`, `fatal` | `error` y `fatal`, 14 días |
+| `test` | `fatal` | `fatal`; directorio ignorado por Git |
+| `production` | `info`, `warning`, `error`, `fatal` | No se crean |
+
+En producción se omiten logs `debug` y `http` para reducir ruido. Los registros se envían a stdout/stderr del contenedor para que la plataforma de despliegue decida su retención. En desarrollo, `logs/` está ignorado por Git.
+
+## Testing funcional
+
+Crear el archivo privado:
+
+```bash
+cp .env.test.example .env.test
+```
+
+Configurar una URI cuya base se llame exactamente `shipnow_test` y ejecutar:
+
+```bash
 npm test
 ```
 
-No es necesario iniciar el servidor ni utilizar Postman para ejecutar la suite.
+La suite contiene **41 tests funcionales** y cubre:
 
-### Cobertura funcional
+- usuarios y pedidos;
+- mocks y sus relaciones;
+- paginación, filtros y límite máximo;
+- health check y ausencia de datos sensibles;
+- validación temprana de variables de entorno;
+- política de endpoints en producción;
+- payload máximo;
+- Swagger real;
+- logging;
+- documentos y comprobantes;
+- errores de dominio y rutas inexistentes.
 
-| Módulo | Casos cubiertos |
-|---|---|
-| Users | Listado, creación válida, datos incompletos y ausencia de contraseñas |
-| Orders | Listado, creación, consulta por ID, cambio de estado, datos incompletos, recurso inexistente y estado inválido |
-| Uploads | Documento y comprobante válidos, archivo faltante, tipo documental inválido, MIME inválido, tamaño excedido, campo incorrecto, entidad inexistente y limpieza física |
-| Mocks | Usuarios, pedidos, productos, carga relacionada, cantidades inválidas y relaciones inválidas |
-| Logger | Ejecución de los niveles `debug`, `http`, `info`, `warning`, `error` y `fatal` |
-| Swagger | Acceso a Swagger UI y contenido principal de la especificación |
-| Errores | Ruta inexistente y formato uniforme `status`, `error` y `message` |
+`test/root-hooks.js` se niega a limpiar cualquier base cuyo nombre no sea exactamente `shipnow_test`. Antes de cada caso y al finalizar elimina usuarios, productos, pedidos, entregas y `uploads/test/`, y luego cierra Mongoose.
 
-### Datos controlados y limpieza
+## Swagger
 
-Los payloads se generan mediante factories deterministas y cada test puede ejecutarse de forma independiente.
-
-Antes de cada test se eliminan los registros existentes y el contenido aislado de `uploads/test`. Al terminar la suite se vuelven a limpiar las colecciones y se cierra la conexión de Mongoose. De esta forma no quedan usuarios, pedidos, productos, entregas ni archivos creados por las pruebas.
-
-La suite fue ejecutada dos veces consecutivas con **28 tests aprobados** y todas las colecciones de `shipnow_test` quedaron en cero.
-
-## Documentación interactiva con Swagger
-
-ShipNow utiliza `swagger-jsdoc` y `swagger-ui-express` con **OpenAPI 3.0.3**. La configuración está separada en `src/config/swagger.config.js` y la documentación por módulos se encuentra en `src/docs/`.
-
-Con el servidor iniciado, Swagger UI está disponible en:
+Con la aplicación iniciada:
 
 ```text
 http://localhost:8080/api/docs/
 ```
 
-### Módulos documentados
+La especificación OpenAPI 3.0.3 se divide por módulos en `src/docs/` y actualmente contiene **19 paths y 27 operaciones HTTP**. Incluye:
 
-| Tag | Ruta principal |
-|---|---|
-| Users | `/api/users` |
-| Products | `/api/products` |
-| Orders | `/api/orders` |
-| Deliveries | `/api/deliveries` |
-| Mocks | `/api/mocks` |
-| Logger | `/logger-test` |
+- health check;
+- parámetros y metadatos de paginación;
+- filtros admitidos;
+- usuarios, productos, pedidos y entregas;
+- documentos y comprobantes multipart;
+- mocks y logger-test con su criterio productivo;
+- respuestas y errores reutilizables.
 
-La especificación reúne **18 paths y 26 operaciones HTTP**, organizadas por tags.
+## Docker
 
-### Schemas reutilizables
+### Diseño de la imagen
 
-Swagger incluye schemas compartidos para usuarios, productos, pedidos, items de pedido, entregas, metadatos de archivos, identificadores de MongoDB y respuestas exitosas o de error.
+El `Dockerfile`:
 
-Cada endpoint documenta su método, ruta, descripción, parámetros, body, respuesta exitosa y posibles errores reales de la API.
+- utiliza `node:24-alpine`;
+- copia primero `package.json` y `package-lock.json`;
+- instala versiones reproducibles con `npm ci --omit=dev`;
+- deshabilita scripts de instalación y limpia la caché de npm;
+- copia solamente `src/`;
+- prepara `/app/uploads` con permisos controlados;
+- ejecuta la API como usuario no-root `node`;
+- expone `8080`;
+- incorpora un health check;
+- inicia mediante `npm start`.
 
-### Cómo probar Swagger
+### Construir la imagen
 
-1. Iniciar el servidor con `npm run dev`.
-2. Abrir `http://localhost:8080/api/docs/`.
-3. Desplegar un endpoint y presionar **Try it out**.
-4. Completar los datos y presionar **Execute**.
+Desde la raíz:
 
-Las rutas de Mocks están disponibles con `NODE_ENV=development` y también durante la suite aislada con `NODE_ENV=test`. `/logger-test` es una herramienta de validación y no una funcionalidad de negocio. Como ShipNow todavía no implementa autenticación, no se documentan respuestas `401` o `403` inexistentes.
-
-## Logging profesional
-
-ShipNow utiliza Winston mediante una configuración única ubicada en `src/config/logger.js`. Todos los módulos importan la misma instancia y no existen configuraciones repetidas ni mensajes dispersos con `console.log()`.
-
-Los registros utilizan el siguiente formato:
-
-```text
-YYYY-MM-DD HH:mm:ss [nivel] mensaje
+```bash
+docker build --pull -t shipnow-pre8:local .
 ```
 
-### Niveles disponibles
+### Configurar producción
 
-| Nivel | Uso |
-|---|---|
-| `debug` | Información detallada para desarrollo |
-| `http` | Método, URL, status HTTP y duración de las peticiones |
-| `info` | Eventos normales, inicio del servidor y generación de mocks |
-| `warning` | Errores esperados, validaciones y recursos inexistentes |
-| `error` | Errores internos y fallas de operaciones |
-| `fatal` | Fallas críticas durante el inicio de la aplicación |
-
-### Comportamiento según el entorno
-
-| Entorno | Consola | Archivos |
-|---|---|---|
-| `development` | `debug`, `http`, `info`, `warning`, `error` y `fatal` | `error` y `fatal` |
-| `test` | `debug`, `http`, `info`, `warning`, `error` y `fatal` | `error` y `fatal` |
-| `production` | `info`, `warning`, `error` y `fatal` | `error` y `fatal` |
-
-En producción se excluyen los niveles `debug` y `http` para reducir el ruido de los registros.
-
-### Integración con ShipNow
-
-El logger registra los siguientes eventos:
-
-- conexión exitosa con MongoDB;
-- inicio del servidor;
-- fallas críticas durante el arranque;
-- peticiones HTTP con método, URL, status y duración;
-- generación de usuarios, pedidos y productos mock;
-- carga de datos mock en MongoDB;
-- carga exitosa de documentos y comprobantes asociados a sus entidades;
-- validaciones y errores controlados como `warning`;
-- rutas inexistentes como `warning`;
-- errores inesperados y fallas de MongoDB como `error`.
-
-El middleware global continúa construyendo la respuesta HTTP uniforme. Winston solo registra internamente lo ocurrido y nunca expone stacks ni detalles sensibles al cliente.
-
-### Organización del logging
-
-```text
-src/
-├── config/
-│   └── logger.js
-├── middlewares/
-│   ├── error.middleware.js
-│   └── http-logger.middleware.js
-├── mocks/
-│   └── services/
-│       └── mock.service.js
-└── server.js
+```bash
+cp .env.production.example .env.production
 ```
 
-- `logger.js`: define los niveles, formatos, transportes y comportamiento por entorno.
-- `http-logger.middleware.js`: registra método, URL, status HTTP y duración de cada petición.
-- `error.middleware.js`: registra errores controlados como `warning` y fallas internas como `error`.
-- `mock.service.js`: registra las operaciones correctas de generación y carga de datos de prueba.
-- `server.js`: registra la conexión a MongoDB, el inicio del servidor y las fallas críticas.
-
-### Endpoint de prueba
-
-Las pruebas manuales del logger se realizan desde Postman con:
-
-```http
-GET http://localhost:8080/logger-test
-```
-
-No requiere body ni encabezados especiales. El endpoint ejecuta los seis niveles:
-
-```text
-debug
-http
-info
-warning
-error
-fatal
-```
-
-Respuesta esperada:
-
-```json
-{
-  "status": "success",
-  "message": "Todos los niveles del logger fueron ejecutados"
-}
-```
-
-Para comprobar los seis niveles en consola, la aplicación debe ejecutarse con:
+Reemplazar el placeholder de `MONGODB_URI` por una URI real. El archivo debe conservar:
 
 ```env
-NODE_ENV=development
+PORT=8080
+MONGODB_URI=URI_REAL_DE_MONGODB
+NODE_ENV=production
+LOG_LEVEL=info
 ```
 
-El nivel `fatal` utilizado por este endpoint solo comprueba el funcionamiento del logger y no detiene el servidor.
+### Ejecutar el contenedor
 
-### Persistencia y rotación
-
-Los errores se guardan automáticamente en:
-
-```text
-logs/error-YYYY-MM-DD.log
+```bash
+MSYS_NO_PATHCONV=1 docker run -d \
+  --name shipnow-api \
+  --env-file .env.production \
+  -p 8080:8080 \
+  --mount type=volume,source=shipnow-uploads,target=/app/uploads \
+  shipnow-pre8:local
 ```
 
-La rotación se realiza diariamente y conserva los archivos de los últimos 14 días. Los niveles `debug`, `http`, `info` y `warning` no se escriben en esos archivos.
+El prefijo `MSYS_NO_PATHCONV=1` evita que Git Bash transforme la ruta interna `/app/uploads`. En Linux o macOS puede omitirse.
 
-La carpeta `/logs/`, los archivos rotados y el archivo interno de auditoría están incluidos en `.gitignore`. Ningún archivo generado por el logger se sube al repositorio.
+La API queda publicada en el puerto 8080 del host. El archivo de entorno se lee en tiempo de ejecución y no forma parte de ninguna capa de la imagen.
 
-## Formato centralizado de errores
+### Comprobar el despliegue
 
-Todas las respuestas de error respetan la misma estructura:
+```bash
+curl http://localhost:8080/health
+curl -I http://localhost:8080/api/docs/
+curl "http://localhost:8080/api/users?page=1&limit=10"
+docker inspect shipnow-api --format '{{.State.Health.Status}}'
+docker logs shipnow-api
+```
+
+Resultados esperados: health, Swagger y usuarios responden `200`; Docker informa `healthy`.
+
+### Detener y limpiar
+
+```bash
+docker stop shipnow-api
+docker rm shipnow-api
+```
+
+El volumen `shipnow-uploads` permanece para preservar archivos entre contenedores. Si ya no se necesita:
+
+```bash
+docker volume rm shipnow-uploads
+```
+
+### Validación realizada
+
+La imagen fue construida y ejecutada con Docker Desktop usando el backend Linux:
+
+- contenido aproximado: 70 MB;
+- usuario efectivo: `node`;
+- dependencias de desarrollo ausentes;
+- `.env` y tests ausentes;
+- directorio de uploads escribible;
+- MongoDB conectada;
+- health, Swagger y listado paginado disponibles;
+- mocks y logger-test restringidos en producción;
+- estado `healthy` y cero reinicios.
+
+## Archivos excluidos
+
+| Recurso | Git | Imagen Docker |
+|---|---:|---:|
+| `node_modules/` | Excluido | Se reinstala solo para producción |
+| `.env`, `.env.test`, `.env.production` | Excluidos | Excluidos |
+| `.git/` y configuración local | No aplica | Excluidos |
+| `logs/` y `*.log` | Excluidos | Excluidos |
+| `uploads/` | Excluido | Excluido; se monta un volumen |
+| `coverage/` | Excluido | Excluido |
+| `test/` | Versionado | Excluido de la imagen |
+| temporales, IDE y archivos del sistema | Excluidos cuando corresponde | Excluidos |
+
+## Errores centralizados
+
+Todas las respuestas de error respetan:
 
 ```json
 {
@@ -335,301 +408,57 @@ Todas las respuestas de error respetan la misma estructura:
 }
 ```
 
-Ejemplo:
-
-```json
-{
-  "status": "error",
-  "error": "PRODUCT_NOT_FOUND",
-  "message": "No se encontró el producto solicitado"
-}
-```
-
-Los errores inesperados responden con `INTERNAL_SERVER_ERROR` y no exponen stacks, rutas internas, datos de conexión ni otros detalles sensibles.
-
-## Organización de la capa de errores
-
-```text
-src/
-├── errors/
-│   ├── app-error.js
-│   ├── error-codes.js
-│   ├── errors.dictionary.js
-│   └── index.js
-└── middlewares/
-    └── error.middleware.js
-```
-
-- `error-codes.js`: contiene los identificadores estables de los errores.
-- `errors.dictionary.js`: relaciona cada código con su mensaje y status HTTP.
-- `app-error.js`: define el error personalizado de la aplicación.
-- `index.js`: centraliza las exportaciones de la carpeta.
-- `error.middleware.js`: transforma los errores en respuestas HTTP uniformes.
-
-El recorrido de un error controlado es:
-
-```text
-Service detecta el problema → lanza AppError → Controller ejecuta next(error) → Middleware global responde
-```
-
-Los services no dependen de Express y los repositories no construyen respuestas HTTP.
-
-## Códigos de error implementados
-
-| Código | HTTP | Caso principal |
+| Código | HTTP | Caso |
 |---|---:|---|
-| `PRODUCT_NOT_FOUND` | 404 | El producto solicitado no existe |
-| `USER_NOT_FOUND` | 404 | El usuario solicitado no existe |
-| `USER_ALREADY_EXISTS` | 409 | El email ya está registrado |
-| `ORDER_NOT_FOUND` | 404 | El pedido solicitado no existe |
-| `DELIVERY_NOT_FOUND` | 404 | La entrega solicitada no existe |
-| `INVALID_ORDER_STATUS` | 400 | El estado del pedido no es válido |
-| `INVALID_DELIVERY_STATUS` | 400 | El estado de la entrega no es válido |
-| `FILE_REQUIRED` | 400 | No se adjuntó el archivo esperado |
-| `INVALID_FILE_TYPE` | 400 | MIME type o extensión no permitidos |
-| `FILE_TOO_LARGE` | 413 | El archivo supera los 5 MB |
-| `INVALID_FILE_FIELD` | 400 | El campo multipart no coincide con el esperado |
-| `INVALID_DOCUMENT_TYPE` | 400 | El tipo documental no está permitido |
-| `FILE_STORAGE_ERROR` | 500 | No se pudo almacenar el archivo |
-| `INVALID_MOCK_AMOUNT` | 400 | La cantidad de mocks es inválida |
-| `INVALID_MOCK_DATA` | 400 | Los datos o relaciones de mocks son inválidos |
-| `MOCK_GENERATION_ERROR` | 500 | Falló la generación o carga de mocks |
-| `INVALID_ID` | 400 | El identificador no tiene un formato válido |
-| `VALIDATION_ERROR` | 400 | Mongoose rechazó los datos enviados |
-| `DUPLICATE_RESOURCE` | 409 | Existe un registro con un valor único repetido |
-| `ROUTE_NOT_FOUND` | 404 | La ruta solicitada no existe |
-| `INTERNAL_SERVER_ERROR` | 500 | Ocurrió un error inesperado |
-
-El middleware también transforma automáticamente errores de Mongoose y MongoDB, incluidos `CastError`, `ValidationError` y errores de clave duplicada con código `11000`.
-
-## Pruebas manuales con Postman
-
-Las pruebas manuales de esta entrega se realizaron desde Postman con el servidor iniciado en `http://localhost:8080`.
-
-Para las peticiones `POST`, se seleccionó `Body → raw → JSON` y se agregó automáticamente el encabezado `Content-Type: application/json`.
-
-Para las cargas de archivos se utiliza `Body → form-data`; los campos `document` y `receipt` deben configurarse como tipo **File**.
-
-| Caso | Método | URL | Respuesta esperada |
-|---|---|---|---|
-| Prueba de todos los niveles | `GET` | `http://localhost:8080/logger-test` | `200` y seis niveles en consola |
-| Ruta inexistente | `GET` | `http://localhost:8080/api/ruta-que-no-existe` | `404 ROUTE_NOT_FOUND` y log `warning` |
-| Producto inexistente | `GET` | `http://localhost:8080/api/products/000000000000000000000000` | `404 PRODUCT_NOT_FOUND` |
-| ID inválido | `GET` | `http://localhost:8080/api/products/abc` | `400 INVALID_ID` |
-| Usuario inexistente | `GET` | `http://localhost:8080/api/users/000000000000000000000000` | `404 USER_NOT_FOUND` |
-
-### Verificar los archivos de logs
-
-Después de ejecutar `GET /logger-test`, revisar la carpeta `logs`. El archivo diario debe contener únicamente mensajes con los niveles:
-
-```text
-error
-fatal
-```
-
-Los niveles `debug`, `http`, `info` y `warning` solo deben observarse en la consola de desarrollo.
-
-### Datos inválidos de producto
-
-Configurar en Postman:
-
-```http
-POST http://localhost:8080/api/products
-```
-
-Body:
-
-```json
-{
-  "name": "A",
-  "price": -1,
-  "stock": -2
-}
-```
-
-Respuesta esperada: `400 VALIDATION_ERROR` con los mensajes de validación del modelo. El error se registra como `warning`.
-
-## Módulo de mocks
-
-Las rutas de mocks se encuentran bajo `/api/mocks` y están disponibles en desarrollo y durante los tests aislados. Para utilizarlas manualmente, ejecutar con:
-
-```env
-NODE_ENV=development
-```
-
-En producción, estas rutas responden `404` mediante la misma capa centralizada.
-
-### Generar usuarios sin guardar
-
-```http
-GET /api/mocks/mockingusers?qty=10
-```
-
-Si no se envía `qty`, se generan 10 usuarios. Se aceptan cantidades enteras entre 1 y 100.
-
-### Generar pedidos sin guardar
-
-```http
-GET /api/mocks/mockingorders?qty=10
-```
-
-Los pedidos generados contienen un usuario simulado, dirección, items, estado y prioridad válidos.
-
-### Generar productos
-
-```http
-POST /api/mocks/generate-products
-```
-
-Body para generarlos sin guardar:
-
-```json
-{
-  "count": 10,
-  "saveToDatabase": false
-}
-```
-
-Body para insertarlos en MongoDB:
-
-```json
-{
-  "count": 10,
-  "saveToDatabase": true
-}
-```
-
-Cada producto utiliza los campos del modelo de ShipNow: `name`, `description`, `price`, `stock` y `status`. El status se calcula de acuerdo con el stock.
-
-### Insertar usuarios, pedidos y entregas relacionados
-
-```http
-POST /api/mocks/generateData
-```
-
-Body de ejemplo:
-
-```json
-{
-  "users": 10,
-  "orders": 20,
-  "deliveries": 5
-}
-```
-
-El endpoint inserta primero los usuarios, luego los pedidos relacionados con clientes y finalmente las entregas relacionadas con pedidos y repartidores.
-
-Las operaciones correctas de generación se registran como `info`. Si una inserción falla, el middleware registra el error como `error`.
-
-## Pruebas de errores de mocks con Postman
-
-Estos casos también se probaron manualmente desde Postman.
-
-### Cantidad negativa
-
-```http
-GET http://localhost:8080/api/mocks/mockingusers?qty=-1
-```
-
-Respuesta esperada: `400 INVALID_MOCK_AMOUNT` y registro de nivel `warning`.
-
-### Cantidad de productos inválida
-
-```http
-POST http://localhost:8080/api/mocks/generate-products
-```
-
-Body:
-
-```json
-{
-  "count": -2,
-  "saveToDatabase": false
-}
-```
-
-Respuesta esperada: `400 INVALID_MOCK_AMOUNT` y registro de nivel `warning`.
-
-### Opción de guardado inválida
-
-```http
-POST http://localhost:8080/api/mocks/generate-products
-```
-
-Body:
-
-```json
-{
-  "count": 2,
-  "saveToDatabase": "true"
-}
-```
-
-Respuesta esperada: `400 INVALID_MOCK_DATA` porque `saveToDatabase` debe ser booleano.
-
-### Relación inválida entre datos
-
-```http
-POST http://localhost:8080/api/mocks/generateData
-```
-
-Body:
-
-```json
-{
-  "users": 0,
-  "orders": 1,
-  "deliveries": 0
-}
-```
-
-Respuesta esperada: `400 INVALID_MOCK_DATA` porque no se pueden crear pedidos sin usuarios.
-
-Las inserciones del módulo pasan por `MockRepository`. Si MongoDB falla durante la carga, el Service genera `MOCK_GENERATION_ERROR`, el middleware registra el problema como `error` y responde `500` sin exponer la causa interna.
-
-## Validaciones de generateData
-
-- `users`, `orders` y `deliveries` deben ser enteros entre 0 y 100.
-- Debe solicitarse al menos un registro.
-- Para generar pedidos también deben generarse usuarios.
-- Para generar entregas también deben generarse pedidos.
-- La cantidad de entregas no puede superar la de pedidos.
-- Para generar entregas deben solicitarse al menos dos usuarios.
-
-## Funcionalidades disponibles
-
-Se encuentran disponibles los siguientes módulos principales:
-
-- `/api/products`
-- `/api/users`
-- `/api/orders`
-- `/api/deliveries`
-- `POST /api/users/:id/documents`
-- `POST /api/deliveries/:id/receipts`
-
-También se mantienen los mocks de usuarios, pedidos, productos y entregas, junto con sus relaciones y constantes de dominio.
-
-La aplicación incorpora además:
-
-- logger centralizado y reutilizable;
-- middleware de peticiones HTTP;
-- integración del logger con errores y mocks;
-- persistencia y rotación diaria;
-- endpoint `GET /logger-test`;
-- documentación OpenAPI separada por módulos;
-- schemas reutilizables;
-- Swagger UI disponible en `/api/docs/`;
-- testing funcional con Mocha, Chai y Supertest;
-- entorno y base de testing separados;
-- limpieza automática de datos de prueba;
-- configuración centralizada de Multer;
-- documentos y comprobantes asociados mediante metadatos;
-- limpieza automática de archivos de testing;
-- carpeta `uploads/` excluida del repositorio.
-
-## Aclaración sobre las contraseñas
-
-En estas pre-entregas las contraseñas se guardan sin hashing. Las contraseñas no se devuelven en las respuestas de la API.
+| `INVALID_PAGINATION` | 400 | Página o límite inválido |
+| `INVALID_FILTER` | 400 | Filtro fuera del dominio |
+| `PAYLOAD_TOO_LARGE` | 413 | Body JSON mayor a 100 KB |
+| `FILE_REQUIRED` | 400 | Archivo ausente |
+| `INVALID_FILE_TYPE` | 400 | Tipo o extensión no admitidos |
+| `FILE_TOO_LARGE` | 413 | Archivo mayor a 5 MB |
+| `INVALID_FILE_FIELD` | 400 | Campo multipart incorrecto |
+| `INVALID_DOCUMENT_TYPE` | 400 | Tipo documental inválido |
+| `PRODUCT_NOT_FOUND` | 404 | Producto inexistente |
+| `USER_NOT_FOUND` | 404 | Usuario inexistente |
+| `ORDER_NOT_FOUND` | 404 | Pedido inexistente |
+| `DELIVERY_NOT_FOUND` | 404 | Entrega inexistente |
+| `VALIDATION_ERROR` | 400 | Datos rechazados por el modelo |
+| `ROUTE_NOT_FOUND` | 404 | Ruta inexistente |
+| `INTERNAL_SERVER_ERROR` | 500 | Falla inesperada sin exposición de detalles |
+
+## Endpoints principales
+
+| Método | Ruta | Función |
+|---|---|---|
+| `GET`, `POST` | `/api/users` | Listar y crear usuarios |
+| `GET`, `PUT`, `DELETE` | `/api/users/:id` | Consultar, actualizar y eliminar |
+| `POST` | `/api/users/:id/documents` | Asociar documento |
+| `GET`, `POST` | `/api/products` | Listar y crear productos |
+| `GET` | `/api/products/available` | Listar disponibles |
+| `GET`, `PUT`, `DELETE` | `/api/products/:id` | Consultar, actualizar y eliminar |
+| `GET`, `POST` | `/api/orders` | Listar y crear pedidos |
+| `GET` | `/api/orders/:id` | Consultar pedido |
+| `PATCH` | `/api/orders/:id/status` | Actualizar estado |
+| `GET`, `POST` | `/api/deliveries` | Listar y crear entregas |
+| `GET` | `/api/deliveries/:id` | Consultar entrega |
+| `PATCH` | `/api/deliveries/:id/status` | Actualizar estado |
+| `POST` | `/api/deliveries/:id/receipts` | Asociar comprobante |
+| `GET` | `/health` | Estado operativo |
+
+## Mocks
+
+En `development` y `test` se mantienen:
+
+- `GET /api/mocks/mockingusers?qty=10`;
+- `GET /api/mocks/mockingorders?qty=10`;
+- `POST /api/mocks/generate-products`;
+- `POST /api/mocks/generateData`.
+
+Las cantidades se validan entre 0 o 1 y 100 según la operación, y las relaciones entre usuarios, pedidos y entregas se controlan antes de persistir. En producción, todo el grupo responde `404`.
+
+## Consideraciones de seguridad
+
+Las contraseñas no se devuelven en respuestas, pero en esta etapa todavía se guardan sin hashing y no existe autenticación.
 
 ## Autor
 

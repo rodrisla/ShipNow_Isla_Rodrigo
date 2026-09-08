@@ -1,0 +1,14 @@
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Consultar el estado de la API
+      description: Devuelve estado, entorno, uptime y timestamp sin exponer credenciales ni datos internos.
+      responses:
+        '200':
+          description: API operativa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'

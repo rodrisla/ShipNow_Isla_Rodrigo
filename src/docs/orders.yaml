@@ -4,7 +4,33 @@ paths:
       tags:
         - Orders
       summary: Listar pedidos
-      description: Devuelve todos los pedidos con el usuario relacionado y sin exponer contraseñas.
+      description: Devuelve pedidos paginados con el usuario relacionado y permite filtrar por estado y prioridad.
+      parameters:
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/LimitQuery'
+        - name: status
+          in: query
+          required: false
+          description: Estado del pedido
+          schema:
+            type: string
+            enum:
+              - created
+              - assigned
+              - picked_up
+              - in_transit
+              - delivered
+              - cancelled
+        - name: priority
+          in: query
+          required: false
+          description: Prioridad del pedido
+          schema:
+            type: string
+            enum:
+              - low
+              - normal
+              - high
       responses:
         '200':
           description: Lista de pedidos obtenida correctamente
@@ -21,11 +47,20 @@ paths:
                         type: object
                         required:
                           - orders
+                          - pagination
                         properties:
                           orders:
                             type: array
                             items:
                               $ref: '#/components/schemas/Order'
+                          pagination:
+                            $ref: '#/components/schemas/PaginationMetadata'
+        '400':
+          description: INVALID_PAGINATION o INVALID_FILTER - Parámetros de consulta inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '500':
           description: INTERNAL_SERVER_ERROR - Error interno del servidor
           content:
@@ -109,6 +144,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
         '404':
           description: USER_NOT_FOUND - El usuario indicado no existe
           content:
@@ -242,6 +279,8 @@ paths:
                     status: error
                     error: INVALID_ORDER_STATUS
                     message: El estado indicado no es válido para un pedido
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
         '404':
           description: ORDER_NOT_FOUND - El pedido no existe
           content:

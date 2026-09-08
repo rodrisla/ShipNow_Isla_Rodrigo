@@ -9,7 +9,7 @@ const swaggerOptions = {
       title: 'ShipNow API',
       version: '1.0.0',
       description:
-        'API para administrar usuarios, productos, pedidos, entregas, documentos, comprobantes y datos de prueba de ShipNow.'
+        'API para administrar usuarios, productos, pedidos, entregas, documentos y comprobantes de ShipNow, preparada para ejecución local y contenerizada.'
     },
     servers: [
       {
@@ -18,6 +18,10 @@ const swaggerOptions = {
       }
     ],
     tags: [
+      {
+        name: 'Health',
+        description: 'Estado operativo de la API sin información sensible'
+      },
       {
         name: 'Users',
         description: 'Administración de usuarios y sus documentos'
@@ -36,11 +40,11 @@ const swaggerOptions = {
       },
       {
         name: 'Mocks',
-        description: 'Generación de datos de prueba disponible en desarrollo'
+        description: 'Generación de datos de prueba deshabilitada en producción'
       },
       {
         name: 'Logger',
-        description: 'Herramienta interna para validar los niveles del logger'
+        description: 'Herramienta interna deshabilitada en producción'
       }
     ]
   },

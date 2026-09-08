@@ -4,7 +4,23 @@ paths:
       tags:
         - Deliveries
       summary: Listar entregas
-      description: Devuelve las entregas con el pedido, cliente y repartidor relacionados.
+      description: Devuelve entregas paginadas con sus relaciones y permite filtrar por estado.
+      parameters:
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/LimitQuery'
+        - name: status
+          in: query
+          required: false
+          description: Estado de la entrega
+          schema:
+            type: string
+            enum:
+              - pending
+              - assigned
+              - picked_up
+              - in_transit
+              - delivered
+              - cancelled
       responses:
         '200':
           description: Lista de entregas obtenida correctamente
@@ -21,11 +37,20 @@ paths:
                         type: object
                         required:
                           - deliveries
+                          - pagination
                         properties:
                           deliveries:
                             type: array
                             items:
                               $ref: '#/components/schemas/Delivery'
+                          pagination:
+                            $ref: '#/components/schemas/PaginationMetadata'
+        '400':
+          description: INVALID_PAGINATION o INVALID_FILTER - Parámetros de consulta inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '500':
           description: INTERNAL_SERVER_ERROR - Error interno del servidor
           content:
@@ -91,6 +116,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
         '404':
           description: ORDER_NOT_FOUND o USER_NOT_FOUND - Pedido o repartidor inexistente
           content:
@@ -224,6 +251,8 @@ paths:
                     status: error
                     error: INVALID_DELIVERY_STATUS
                     message: El estado indicado no es válido para una entrega
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
         '404':
           description: DELIVERY_NOT_FOUND - La entrega no existe
           content:
