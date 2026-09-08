@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { mkdirSync } from 'node:fs';
+import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import multer from 'multer';
@@ -40,12 +40,9 @@ const createStorage = (subdirectory) =>
     destination: (_req, _file, callback) => {
       const directory = path.join(runtimeUploadsRoot, subdirectory);
 
-      try {
-        mkdirSync(directory, { recursive: true });
-        callback(null, directory);
-      } catch (error) {
-        callback(error);
-      }
+      mkdir(directory, { recursive: true })
+        .then(() => callback(null, directory))
+        .catch(callback);
     },
     filename: (_req, file, callback) => {
       const [extension] = ALLOWED_FILE_TYPES[file.mimetype];

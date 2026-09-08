@@ -1,4 +1,4 @@
-import { mkdirSync } from 'node:fs';
+import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import winston from 'winston';
@@ -9,8 +9,6 @@ import { env } from './env.config.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const logsDirectory = path.resolve(__dirname, '../../logs');
-
-mkdirSync(logsDirectory, { recursive: true });
 
 const loggerLevels = {
   fatal: 0,
@@ -50,13 +48,16 @@ const fileFormat = winston.format.combine(
   lineFormat
 );
 
-const logger = winston.createLogger({
-  levels: loggerLevels,
-  level: env.nodeEnv === 'production' ? 'info' : 'debug',
-  transports: [
-    new winston.transports.Console({
-      format: consoleFormat
-    }),
+const transports = [
+  new winston.transports.Console({
+    format: consoleFormat
+  })
+];
+
+if (!env.isProduction) {
+  await mkdir(logsDirectory, { recursive: true });
+
+  transports.push(
     new DailyRotateFile({
       dirname: logsDirectory,
       filename: 'error-%DATE%.log',
@@ -65,7 +66,13 @@ const logger = winston.createLogger({
       maxFiles: '14d',
       format: fileFormat
     })
-  ]
+  );
+}
+
+const logger = winston.createLogger({
+  levels: loggerLevels,
+  level: env.logLevel,
+  transports
 });
 
 export { logger };

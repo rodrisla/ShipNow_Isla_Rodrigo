@@ -10,6 +10,10 @@ const getValidationMessage = (error) => {
 };
 
 const mapToAppError = (error) => {
+  if (error.type === 'entity.too.large') {
+    return new AppError(ERROR_CODES.PAYLOAD_TOO_LARGE);
+  }
+
   if (error.name === 'CastError') {
     if (error.path === '_id' || error.kind === 'ObjectId') {
       return new AppError(ERROR_CODES.INVALID_ID);

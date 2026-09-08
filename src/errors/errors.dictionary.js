@@ -73,6 +73,10 @@ export const ERRORS_DICTIONARY = Object.freeze({
     statusCode: 400,
     message: 'Los filtros enviados no son válidos'
   },
+  [ERROR_CODES.PAYLOAD_TOO_LARGE]: {
+    statusCode: 413,
+    message: 'El cuerpo de la solicitud supera el límite permitido'
+  },
   [ERROR_CODES.INVALID_ID]: {
     statusCode: 400,
     message: 'El identificador proporcionado no es válido'
