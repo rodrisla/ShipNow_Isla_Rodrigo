@@ -1,11 +1,20 @@
 import { logger } from '../config/logger.js';
-import { USER_DOCUMENT_TYPES } from '../constants/index.js';
+import {
+  USER_DOCUMENT_TYPES,
+  USER_ROLES
+} from '../constants/index.js';
 import { AppError, ERROR_CODES } from '../errors/index.js';
 import { userRepository } from '../repositories/user.repository.js';
 import {
   buildFileMetadata,
   removeStoredFile
 } from '../utils/file.utils.js';
+import {
+  buildPaginationMetadata,
+  parseBooleanFilter,
+  parseEnumFilter,
+  parsePagination
+} from '../utils/list-query.utils.js';
 
 const normalizeEmail = (email) => {
   return typeof email === 'string'
@@ -25,10 +34,34 @@ const hidePassword = (user) => {
 };
 
 class UserService {
-  async getAll() {
-    const users = await userRepository.getAll();
+  async getAll(query = {}) {
+    const { page, limit, skip } = parsePagination(query);
+    const role = parseEnumFilter(
+      query.role,
+      Object.values(USER_ROLES),
+      'role'
+    );
+    const active = parseBooleanFilter(query.active, 'active');
+    const filter = {};
 
-    return users.map(hidePassword);
+    if (role !== undefined) {
+      filter.role = role;
+    }
+
+    if (active !== undefined) {
+      filter.active = active;
+    }
+
+    const { users, total } = await userRepository.getAll({
+      filter,
+      skip,
+      limit
+    });
+
+    return {
+      users: users.map(hidePassword),
+      pagination: buildPaginationMetadata({ page, limit, total })
+    };
   }
 
   async getById(id) {

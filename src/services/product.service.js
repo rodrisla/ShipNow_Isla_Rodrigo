@@ -1,6 +1,11 @@
-import { PRODUCT_STATUS } from "../constants/index.js";
-import { productRepository } from "../repositories/product.repository.js";
-import { AppError, ERROR_CODES } from "../errors/index.js";
+import { PRODUCT_STATUS } from '../constants/index.js';
+import { productRepository } from '../repositories/product.repository.js';
+import { AppError, ERROR_CODES } from '../errors/index.js';
+import {
+  buildPaginationMetadata,
+  parseEnumFilter,
+  parsePagination
+} from '../utils/list-query.utils.js';
 
 const getProductStatus = (stock) => {
   return Number(stock) > 0
@@ -9,16 +14,43 @@ const getProductStatus = (stock) => {
 };
 
 class ProductService {
-  async getAll() {
-    return productRepository.getAll();
+  async getAll(query = {}) {
+    const { page, limit, skip } = parsePagination(query);
+    const status = parseEnumFilter(
+      query.status,
+      Object.values(PRODUCT_STATUS),
+      'status'
+    );
+    const filter = {};
+
+    if (status !== undefined) {
+      filter.status = status;
+    }
+
+    const { products, total } = await productRepository.getAll({
+      filter,
+      skip,
+      limit
+    });
+
+    return {
+      products,
+      pagination: buildPaginationMetadata({ page, limit, total })
+    };
   }
 
-  async getAvailable() {
-    const products = await productRepository.getAll();
+  async getAvailable(query = {}) {
+    const { page, limit, skip } = parsePagination(query);
+    const { products, total } = await productRepository.getAll({
+      filter: { status: PRODUCT_STATUS.AVAILABLE },
+      skip,
+      limit
+    });
 
-    return products.filter(
-      (product) => product.status === PRODUCT_STATUS.AVAILABLE,
-    );
+    return {
+      products,
+      pagination: buildPaginationMetadata({ page, limit, total })
+    };
   }
 
   async getById(id) {

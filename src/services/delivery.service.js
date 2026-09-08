@@ -11,10 +11,36 @@ import {
   buildFileMetadata,
   removeStoredFile
 } from '../utils/file.utils.js';
+import {
+  buildPaginationMetadata,
+  parseEnumFilter,
+  parsePagination
+} from '../utils/list-query.utils.js';
 
 class DeliveryService {
-  async getAll() {
-    return deliveryRepository.getAll();
+  async getAll(query = {}) {
+    const { page, limit, skip } = parsePagination(query);
+    const status = parseEnumFilter(
+      query.status,
+      Object.values(DELIVERY_STATUS),
+      'status'
+    );
+    const filter = {};
+
+    if (status !== undefined) {
+      filter.status = status;
+    }
+
+    const { deliveries, total } = await deliveryRepository.getAll({
+      filter,
+      skip,
+      limit
+    });
+
+    return {
+      deliveries,
+      pagination: buildPaginationMetadata({ page, limit, total })
+    };
   }
 
   async getById(id) {

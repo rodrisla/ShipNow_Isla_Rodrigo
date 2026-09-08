@@ -1,12 +1,50 @@
 import { logger } from '../config/logger.js';
-import { ORDER_STATUS } from '../constants/index.js';
+import {
+  DELIVERY_PRIORITY,
+  ORDER_STATUS
+} from '../constants/index.js';
 import { AppError, ERROR_CODES } from '../errors/index.js';
 import { orderRepository } from '../repositories/order.repository.js';
 import { userRepository } from '../repositories/user.repository.js';
+import {
+  buildPaginationMetadata,
+  parseEnumFilter,
+  parsePagination
+} from '../utils/list-query.utils.js';
 
 class OrderService {
-  async getAll() {
-    return orderRepository.getAll();
+  async getAll(query = {}) {
+    const { page, limit, skip } = parsePagination(query);
+    const status = parseEnumFilter(
+      query.status,
+      Object.values(ORDER_STATUS),
+      'status'
+    );
+    const priority = parseEnumFilter(
+      query.priority,
+      Object.values(DELIVERY_PRIORITY),
+      'priority'
+    );
+    const filter = {};
+
+    if (status !== undefined) {
+      filter.status = status;
+    }
+
+    if (priority !== undefined) {
+      filter.priority = priority;
+    }
+
+    const { orders, total } = await orderRepository.getAll({
+      filter,
+      skip,
+      limit
+    });
+
+    return {
+      orders,
+      pagination: buildPaginationMetadata({ page, limit, total })
+    };
   }
 
   async getById(id) {

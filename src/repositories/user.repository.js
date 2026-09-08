@@ -1,8 +1,17 @@
 import { UserModel } from '../models/user.model.js';
 
 class UserRepository {
-  async getAll() {
-    return UserModel.find();
+  async getAll({ filter = {}, skip = 0, limit = 10 } = {}) {
+    const [users, total] = await Promise.all([
+      UserModel.find(filter)
+        .sort({ _id: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      UserModel.countDocuments(filter)
+    ]);
+
+    return { users, total };
   }
 
   async getById(id) {

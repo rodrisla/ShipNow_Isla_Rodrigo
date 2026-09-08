@@ -3,11 +3,11 @@ import { userService } from '../services/user.service.js';
 class UserController {
   async getAll(req, res, next) {
     try {
-      const users = await userService.getAll();
+      const { users, pagination } = await userService.getAll(req.query);
 
       return res.status(200).json({
         status: 'success',
-        data: { users }
+        data: { users, pagination }
       });
     } catch (error) {
       next(error);

@@ -65,6 +65,14 @@ export const ERRORS_DICTIONARY = Object.freeze({
     statusCode: 500,
     message: 'No se pudieron generar o guardar los datos de prueba'
   },
+  [ERROR_CODES.INVALID_PAGINATION]: {
+    statusCode: 400,
+    message: 'Los parámetros de paginación no son válidos'
+  },
+  [ERROR_CODES.INVALID_FILTER]: {
+    statusCode: 400,
+    message: 'Los filtros enviados no son válidos'
+  },
   [ERROR_CODES.INVALID_ID]: {
     statusCode: 400,
     message: 'El identificador proporcionado no es válido'

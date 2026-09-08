@@ -1,8 +1,18 @@
 import { OrderModel } from '../models/order.model.js';
 
 class OrderRepository {
-  async getAll() {
-    return OrderModel.find().populate('user', '-password');
+  async getAll({ filter = {}, skip = 0, limit = 10 } = {}) {
+    const [orders, total] = await Promise.all([
+      OrderModel.find(filter)
+        .sort({ _id: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate('user', '-password')
+        .lean(),
+      OrderModel.countDocuments(filter)
+    ]);
+
+    return { orders, total };
   }
 
   async getById(id) {

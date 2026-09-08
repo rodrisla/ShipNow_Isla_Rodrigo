@@ -1,8 +1,17 @@
 import { ProductModel } from '../models/product.model.js';
 
 class ProductRepository {
-  async getAll() {
-    return ProductModel.find();
+  async getAll({ filter = {}, skip = 0, limit = 10 } = {}) {
+    const [products, total] = await Promise.all([
+      ProductModel.find(filter)
+        .sort({ _id: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      ProductModel.countDocuments(filter)
+    ]);
+
+    return { products, total };
   }
 
   async getById(id) {

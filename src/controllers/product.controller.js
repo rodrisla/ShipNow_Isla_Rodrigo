@@ -3,11 +3,13 @@ import { productService } from '../services/product.service.js';
 class ProductController {
   async getAll(req, res, next) {
     try {
-      const products = await productService.getAll();
+      const { products, pagination } = await productService.getAll(
+        req.query
+      );
 
       return res.status(200).json({
         status: 'success',
-        data: { products }
+        data: { products, pagination }
       });
     } catch (error) {
       next(error);
@@ -16,11 +18,12 @@ class ProductController {
 
   async getAvailable(req, res, next) {
     try {
-      const products = await productService.getAvailable();
+      const { products, pagination } =
+        await productService.getAvailable(req.query);
 
       return res.status(200).json({
         status: 'success',
-        data: { products }
+        data: { products, pagination }
       });
     } catch (error) {
       next(error);

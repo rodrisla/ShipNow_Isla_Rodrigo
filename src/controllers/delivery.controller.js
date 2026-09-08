@@ -3,11 +3,12 @@ import { deliveryService } from '../services/delivery.service.js';
 class DeliveryController {
   async getAll(req, res, next) {
     try {
-      const deliveries = await deliveryService.getAll();
+      const { deliveries, pagination } =
+        await deliveryService.getAll(req.query);
 
       return res.status(200).json({
         status: 'success',
-        data: { deliveries }
+        data: { deliveries, pagination }
       });
     } catch (error) {
       next(error);

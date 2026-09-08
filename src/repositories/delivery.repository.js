@@ -15,8 +15,18 @@ const deliveryPopulate = [
 ];
 
 class DeliveryRepository {
-  async getAll() {
-    return DeliveryModel.find().populate(deliveryPopulate);
+  async getAll({ filter = {}, skip = 0, limit = 10 } = {}) {
+    const [deliveries, total] = await Promise.all([
+      DeliveryModel.find(filter)
+        .sort({ _id: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate(deliveryPopulate)
+        .lean(),
+      DeliveryModel.countDocuments(filter)
+    ]);
+
+    return { deliveries, total };
   }
 
   async getById(id) {
