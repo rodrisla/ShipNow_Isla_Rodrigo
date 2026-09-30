@@ -17,6 +17,8 @@ import {
   parsePagination
 } from '../utils/list-query.utils.js';
 
+const TRACKING_CODE_PATTERN = /^SHP-[A-F0-9]{12}$/;
+
 class DeliveryService {
   async getAll(query = {}) {
     const { page, limit, skip } = parsePagination(query);
@@ -53,6 +55,27 @@ class DeliveryService {
     return delivery;
   }
 
+  async getByTrackingCode(trackingCode) {
+    const normalizedTrackingCode =
+      typeof trackingCode === 'string'
+        ? trackingCode.trim().toUpperCase()
+        : '';
+
+    if (!TRACKING_CODE_PATTERN.test(normalizedTrackingCode)) {
+      throw new AppError(ERROR_CODES.INVALID_TRACKING_CODE);
+    }
+
+    const delivery = await deliveryRepository.getByTrackingCode(
+      normalizedTrackingCode
+    );
+
+    if (!delivery) {
+      throw new AppError(ERROR_CODES.DELIVERY_NOT_FOUND);
+    }
+
+    return delivery;
+  }
+
   async create(deliveryData) {
     if (
       deliveryData === null ||
@@ -81,7 +104,12 @@ class DeliveryService {
       }
     }
 
-    const delivery = await deliveryRepository.create(deliveryData);
+    const {
+      trackingCode: _ignoredTrackingCode,
+      receipts: _ignoredReceipts,
+      ...createData
+    } = deliveryData;
+    const delivery = await deliveryRepository.create(createData);
 
     logger.info(`Entrega ${delivery._id} creada correctamente`);
 
@@ -127,6 +155,27 @@ class DeliveryService {
     logger.info(
       `Entrega ${delivery._id} actualizada al estado ${status}`
     );
+
+    return delivery;
+  }
+
+  async deleteById(id) {
+    const delivery = await deliveryRepository.deleteById(id);
+
+    if (!delivery) {
+      throw new AppError(ERROR_CODES.DELIVERY_NOT_FOUND);
+    }
+
+    await Promise.all(
+      delivery.receipts.map((receipt) =>
+        removeStoredFile({
+          path: receipt.path,
+          filename: receipt.storedName
+        })
+      )
+    );
+
+    logger.info(`Entrega ${delivery._id} eliminada correctamente`);
 
     return delivery;
   }

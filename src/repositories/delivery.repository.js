@@ -33,6 +33,12 @@ class DeliveryRepository {
     return DeliveryModel.findById(id).populate(deliveryPopulate);
   }
 
+  async getByTrackingCode(trackingCode) {
+    return DeliveryModel.findOne({ trackingCode }).populate(
+      deliveryPopulate
+    );
+  }
+
   async create(deliveryData) {
     const delivery = await DeliveryModel.create(deliveryData);
 
@@ -53,6 +59,10 @@ class DeliveryRepository {
       { status },
       { returnDocument: 'after', runValidators: true }
     ).populate(deliveryPopulate);
+  }
+
+  async deleteById(id) {
+    return DeliveryModel.findByIdAndDelete(id);
   }
 }
 

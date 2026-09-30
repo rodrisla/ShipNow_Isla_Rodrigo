@@ -1,8 +1,10 @@
-# ShipNow - Pre-entrega Módulo 8
+# ShipNow - Entrega Final Backend III
 
-Esta pre-entrega prepara el proyecto para un escenario cercano a producción mediante paginación y filtros en MongoDB, validación temprana de configuración, límites de payload y archivos, health check, políticas por entorno y ejecución contenerizada con Docker.
+ShipNow es una API REST construida con Node.js, Express, MongoDB y Mongoose para administrar usuarios, productos, pedidos, entregas, documentos y comprobantes.
 
-## Alcance de la Pre-entrega 8
+La entrega final consolida todo el recorrido del curso en un repositorio ejecutable, documentado y testeado. Integra arquitectura por capas, mocks consistentes, errores globales, logging, Swagger, testing funcional, archivos con Multer, controles de performance y un entorno Docker Compose con MongoDB.
+
+## Alcance de la entrega final
 
 - Listados paginados con límite efectivo máximo de 100 resultados.
 - Filtros aplicados en MongoDB antes de recuperar documentos.
@@ -13,7 +15,9 @@ Esta pre-entrega prepara el proyecto para un escenario cercano a producción med
 - Endpoint público `GET /health` sin información sensible.
 - Mocks y logger-test deshabilitados en producción.
 - Swagger disponible para consultar el contrato de la API.
-- Imagen Docker reproducible, no-root y con health check integrado.
+- CRUD y tracking público de entregas mediante código inmutable.
+- Imagen Docker multi-stage, reproducible, no-root y con health check integrado.
+- Docker Compose con API, MongoDB, volúmenes y arranque condicionado por la salud de la base.
 - Contexto Docker sin dependencias locales, secretos, logs, uploads ni tests.
 
 ## Versiones del proyecto
@@ -27,7 +31,8 @@ Cada pre-entrega se encuentra separada en su propia rama:
 - [Pre-entrega 5](https://github.com/rodrisla/ShipNow_Isla_Rodrigo/tree/pre-entrega-5)
 - [Pre-entrega 6](https://github.com/rodrisla/ShipNow_Isla_Rodrigo/tree/pre-entrega-6)
 - [Pre-entrega 7](https://github.com/rodrisla/ShipNow_Isla_Rodrigo/tree/pre-entrega-7)
-- [Pre-entrega 8](https://github.com/rodrisla/ShipNow_Isla_Rodrigo/tree/pre-entrega-8) - Rama actual
+- [Pre-entrega 8](https://github.com/rodrisla/ShipNow_Isla_Rodrigo/tree/pre-entrega-8)
+- [Entrega final](https://github.com/rodrisla/ShipNow_Isla_Rodrigo/tree/entrega-final) - Rama actual
 
 ## Tecnologías
 
@@ -35,11 +40,27 @@ Cada pre-entrega se encuentra separada en su propia rama:
 - Express
 - MongoDB y Mongoose
 - Multer
-- Winston y winston-daily-rotate-file
+- Winston
 - Swagger/OpenAPI
 - Faker
 - Mocha, Chai y Supertest
-- Docker Desktop con backend Linux/WSL 2
+- Docker y Docker Compose
+
+## Arquitectura general
+
+Las rutas principales respetan el flujo `Router → Controller → Service → Repository → Model`:
+
+| Capa | Responsabilidad |
+|---|---|
+| `routes/` | Declara métodos, paths y middlewares; no accede a MongoDB |
+| `controllers/` | Traduce HTTP, invoca servicios y construye respuestas JSON |
+| `services/` | Contiene validaciones y reglas de negocio |
+| `repositories/` | Concentra consultas y persistencia con Mongoose |
+| `models/` | Define schemas, relaciones y restricciones de MongoDB |
+| `middlewares/` | Maneja errores, logging HTTP y carga de archivos |
+| `mocks/` | Conserva su propio flujo controller/service/repository y usa constantes del dominio |
+
+`src/app.js` construye Express sin conectarse ni escuchar puertos. `src/server.js` valida la configuración, conecta MongoDB y recién entonces inicia el servidor. Esta separación permite probar la aplicación real con Supertest sin abrir un puerto.
 
 ## Requisitos
 
@@ -87,7 +108,7 @@ ShipNow todavía no implementa JWT ni consume servicios HTTP externos. Por ese m
 Clonar la rama:
 
 ```bash
-git clone --branch pre-entrega-8 https://github.com/rodrisla/ShipNow_Isla_Rodrigo.git
+git clone --branch entrega-final https://github.com/rodrisla/ShipNow_Isla_Rodrigo.git
 cd ShipNow_Isla_Rodrigo
 ```
 
@@ -233,13 +254,13 @@ El endpoint no devuelve la URI de MongoDB, variables del proceso, contraseñas, 
 
 Winston utiliza una instancia centralizada. No existen llamadas manuales a `console.log()` en la aplicación.
 
-| Entorno | Salida por consola | Archivos rotados |
+| Entorno | Salida por consola | Archivos |
 |---|---|---|
-| `development` | `debug`, `http`, `info`, `warning`, `error`, `fatal` | `error` y `fatal`, 14 días |
-| `test` | `fatal` | `fatal`; directorio ignorado por Git |
-| `production` | `info`, `warning`, `error`, `fatal` | No se crean |
+| `development` | Sí, desde el nivel configurado | `error.log` y `combined.log` |
+| `test` | No | `error.log` y `combined.log` |
+| `production` | No | `error.log` y `combined.log` |
 
-En producción se omiten logs `debug` y `http` para reducir ruido. Los registros se envían a stdout/stderr del contenedor para que la plataforma de despliegue decida su retención. En desarrollo, `logs/` está ignorado por Git.
+`error.log` concentra niveles `fatal` y `error`. `combined.log` registra la actividad admitida por `LOG_LEVEL`. Ambos rotan por tamaño, conservan hasta cinco archivos y viven en `logs/`, carpeta ignorada por Git y montada como volumen en Docker. La consola se habilita exclusivamente en `development`.
 
 ## Testing funcional
 
@@ -255,9 +276,10 @@ Configurar una URI cuya base se llame exactamente `shipnow_test` y ejecutar:
 npm test
 ```
 
-La suite contiene **41 tests funcionales** y cubre:
+La suite contiene **51 tests funcionales** y cubre:
 
-- usuarios y pedidos;
+- usuarios, pedidos y el flujo completo de entregas;
+- creación, consulta, tracking, actualización de estado y eliminación de una entrega;
 - mocks y sus relaciones;
 - paginación, filtros y límite máximo;
 - health check y ausencia de datos sensibles;
@@ -265,7 +287,7 @@ La suite contiene **41 tests funcionales** y cubre:
 - política de endpoints en producción;
 - payload máximo;
 - Swagger real;
-- logging;
+- configuración de `error.log`, `combined.log` y consola por entorno;
 - documentos y comprobantes;
 - errores de dominio y rutas inexistentes.
 
@@ -279,12 +301,13 @@ Con la aplicación iniciada:
 http://localhost:8080/api/docs/
 ```
 
-La especificación OpenAPI 3.0.3 se divide por módulos en `src/docs/` y actualmente contiene **19 paths y 27 operaciones HTTP**. Incluye:
+La especificación OpenAPI 3.0.3 se divide por módulos en `src/docs/` y actualmente contiene **20 paths y 29 operaciones HTTP**. Incluye:
 
 - health check;
 - parámetros y metadatos de paginación;
 - filtros admitidos;
-- usuarios, productos, pedidos y entregas;
+- schemas reutilizables de respuesta exitosa, error, usuario, pedido y entrega;
+- usuarios, productos, pedidos, entregas y tracking;
 - documentos y comprobantes multipart;
 - mocks y logger-test con su criterio productivo;
 - respuestas y errores reutilizables.
@@ -296,40 +319,77 @@ La especificación OpenAPI 3.0.3 se divide por módulos en `src/docs/` y actualm
 El `Dockerfile`:
 
 - utiliza `node:24-alpine`;
-- copia primero `package.json` y `package-lock.json`;
-- instala versiones reproducibles con `npm ci --omit=dev`;
+- separa la instalación y la ejecución en las etapas `dependencies` y `runtime`;
+- copia primero `package.json` y `package-lock.json` para aprovechar la caché;
+- instala versiones productivas reproducibles con `npm ci --omit=dev`;
 - deshabilita scripts de instalación y limpia la caché de npm;
-- copia solamente `src/`;
-- prepara `/app/uploads` con permisos controlados;
+- copia a la etapa final solamente dependencias productivas, manifiestos y `src/`;
+- prepara `/app/uploads` y `/app/logs` con permisos controlados;
 - ejecuta la API como usuario no-root `node`;
 - expone `8080`;
 - incorpora un health check;
 - inicia mediante `npm start`.
 
-### Construir la imagen
+### Ejecutar API y MongoDB con Docker Compose
 
-Desde la raíz:
+El flujo recomendado levanta ambos servicios, espera que MongoDB esté saludable y recién entonces inicia la API:
 
 ```bash
-docker build --pull -t shipnow-pre8:local .
+docker compose up --build -d
+docker compose ps
 ```
 
-### Configurar producción
+Compose publica la API en `http://localhost:8080`, conecta internamente con `mongodb://mongo:27017/shipnow` y conserva MongoDB, uploads y logs en volúmenes independientes.
+
+Para usar otro puerto en el host sin modificar el contenedor:
 
 ```bash
+PORT=3000 docker compose up --build -d
+```
+
+En PowerShell:
+
+```powershell
+$env:PORT=3000
+docker compose up --build -d
+```
+
+### Comprobar el despliegue con Compose
+
+```bash
+curl http://localhost:8080/health
+curl -I http://localhost:8080/api/docs/
+curl "http://localhost:8080/api/users?page=1&limit=10"
+docker compose ps
+docker compose exec api sh -c 'tail -n 50 /app/logs/combined.log'
+```
+
+Resultados esperados: health, Swagger y usuarios responden `200`; los servicios `api` y `mongo` aparecen saludables.
+
+Para detener los servicios sin borrar datos:
+
+```bash
+docker compose down
+```
+
+Solo cuando también se quieran eliminar la base, los uploads y los logs persistidos:
+
+```bash
+docker compose down -v
+```
+
+> `docker compose down -v` es destructivo para los volúmenes del proyecto.
+
+### Construir y ejecutar solo la imagen
+
+Cuando MongoDB ya está disponible de forma externa:
+
+```bash
+docker build --pull -t shipnow-final:local .
 cp .env.production.example .env.production
 ```
 
-Reemplazar el placeholder de `MONGODB_URI` por una URI real. El archivo debe conservar:
-
-```env
-PORT=8080
-MONGODB_URI=URI_REAL_DE_MONGODB
-NODE_ENV=production
-LOG_LEVEL=info
-```
-
-### Ejecutar el contenedor
+Reemplazar `MONGODB_URI` en `.env.production` por la URI real y ejecutar:
 
 ```bash
 MSYS_NO_PATHCONV=1 docker run -d \
@@ -337,24 +397,11 @@ MSYS_NO_PATHCONV=1 docker run -d \
   --env-file .env.production \
   -p 8080:8080 \
   --mount type=volume,source=shipnow-uploads,target=/app/uploads \
-  shipnow-pre8:local
+  --mount type=volume,source=shipnow-logs,target=/app/logs \
+  shipnow-final:local
 ```
 
-El prefijo `MSYS_NO_PATHCONV=1` evita que Git Bash transforme la ruta interna `/app/uploads`. En Linux o macOS puede omitirse.
-
-La API queda publicada en el puerto 8080 del host. El archivo de entorno se lee en tiempo de ejecución y no forma parte de ninguna capa de la imagen.
-
-### Comprobar el despliegue
-
-```bash
-curl http://localhost:8080/health
-curl -I http://localhost:8080/api/docs/
-curl "http://localhost:8080/api/users?page=1&limit=10"
-docker inspect shipnow-api --format '{{.State.Health.Status}}'
-docker logs shipnow-api
-```
-
-Resultados esperados: health, Swagger y usuarios responden `200`; Docker informa `healthy`.
+El prefijo `MSYS_NO_PATHCONV=1` evita que Git Bash transforme las rutas internas. En Linux o macOS puede omitirse. El archivo de entorno se inyecta al ejecutar y no forma parte de la imagen.
 
 ### Detener y limpiar
 
@@ -363,25 +410,25 @@ docker stop shipnow-api
 docker rm shipnow-api
 ```
 
-El volumen `shipnow-uploads` permanece para preservar archivos entre contenedores. Si ya no se necesita:
+Los volúmenes permanecen para preservar archivos y logs entre contenedores. Si ya no se necesitan:
 
 ```bash
 docker volume rm shipnow-uploads
+docker volume rm shipnow-logs
 ```
 
-### Validación realizada
+### Controles de la imagen
 
-La imagen fue construida y ejecutada con Docker Desktop usando el backend Linux:
+La construcción debe confirmar:
 
-- contenido aproximado: 70 MB;
 - usuario efectivo: `node`;
 - dependencias de desarrollo ausentes;
 - `.env` y tests ausentes;
-- directorio de uploads escribible;
+- directorios de uploads y logs escribibles;
 - MongoDB conectada;
 - health, Swagger y listado paginado disponibles;
 - mocks y logger-test restringidos en producción;
-- estado `healthy` y cero reinicios.
+- API y MongoDB saludables.
 
 ## Archivos excluidos
 
@@ -422,6 +469,7 @@ Todas las respuestas de error respetan:
 | `USER_NOT_FOUND` | 404 | Usuario inexistente |
 | `ORDER_NOT_FOUND` | 404 | Pedido inexistente |
 | `DELIVERY_NOT_FOUND` | 404 | Entrega inexistente |
+| `INVALID_TRACKING_CODE` | 400 | Código de seguimiento inválido |
 | `VALIDATION_ERROR` | 400 | Datos rechazados por el modelo |
 | `ROUTE_NOT_FOUND` | 404 | Ruta inexistente |
 | `INTERNAL_SERVER_ERROR` | 500 | Falla inesperada sin exposición de detalles |
@@ -440,7 +488,8 @@ Todas las respuestas de error respetan:
 | `GET` | `/api/orders/:id` | Consultar pedido |
 | `PATCH` | `/api/orders/:id/status` | Actualizar estado |
 | `GET`, `POST` | `/api/deliveries` | Listar y crear entregas |
-| `GET` | `/api/deliveries/:id` | Consultar entrega |
+| `GET`, `DELETE` | `/api/deliveries/:id` | Consultar y eliminar entrega |
+| `GET` | `/api/deliveries/tracking/:trackingCode` | Consultar seguimiento público |
 | `PATCH` | `/api/deliveries/:id/status` | Actualizar estado |
 | `POST` | `/api/deliveries/:id/receipts` | Asociar comprobante |
 | `GET` | `/health` | Estado operativo |
@@ -458,7 +507,7 @@ Las cantidades se validan entre 0 o 1 y 100 según la operación, y las relacion
 
 ## Consideraciones de seguridad
 
-Las contraseñas no se devuelven en respuestas, pero en esta etapa todavía se guardan sin hashing y no existe autenticación.
+Las contraseñas no se devuelven en respuestas, pero en esta etapa académica todavía se guardan sin hashing y no existe autenticación. Antes de un despliegue real deben incorporarse hashing, autenticación, autorización, rate limiting, CORS restringido y una estrategia externa para archivos y secretos.
 
 ## Autor
 

@@ -19,3 +19,9 @@ export const buildOrder = (userId, overrides = {}) => ({
   priority: 'normal',
   ...overrides
 });
+
+export const buildDelivery = (orderId, driverId, overrides = {}) => ({
+  order: orderId,
+  driver: driverId,
+  ...overrides
+});

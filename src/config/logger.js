@@ -2,7 +2,6 @@ import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import winston from 'winston';
-import DailyRotateFile from 'winston-daily-rotate-file';
 
 import { env } from './env.config.js';
 
@@ -48,23 +47,27 @@ const fileFormat = winston.format.combine(
   lineFormat
 );
 
+await mkdir(logsDirectory, { recursive: true });
+
+const createFileTransport = (filename, level) =>
+  new winston.transports.File({
+    filename: path.join(logsDirectory, filename),
+    level,
+    maxsize: 5 * 1024 * 1024,
+    maxFiles: 5,
+    tailable: true,
+    format: fileFormat
+  });
+
 const transports = [
-  new winston.transports.Console({
-    format: consoleFormat
-  })
+  createFileTransport('error.log', 'error'),
+  createFileTransport('combined.log', env.logLevel)
 ];
 
-if (!env.isProduction) {
-  await mkdir(logsDirectory, { recursive: true });
-
+if (env.nodeEnv === 'development') {
   transports.push(
-    new DailyRotateFile({
-      dirname: logsDirectory,
-      filename: 'error-%DATE%.log',
-      datePattern: 'YYYY-MM-DD',
-      level: 'error',
-      maxFiles: '14d',
-      format: fileFormat
+    new winston.transports.Console({
+      format: consoleFormat
     })
   );
 }

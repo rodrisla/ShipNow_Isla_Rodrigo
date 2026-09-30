@@ -7,9 +7,9 @@ const swaggerOptions = {
     openapi: '3.0.3',
     info: {
       title: 'ShipNow API',
-      version: '1.0.0',
+      version: '2.0.0',
       description:
-        'API para administrar usuarios, productos, pedidos, entregas, documentos y comprobantes de ShipNow, preparada para ejecución local y contenerizada.'
+        'API backend final para administrar usuarios, productos, pedidos, entregas con tracking, documentos y comprobantes de ShipNow, preparada para ejecución local y contenerizada.'
     },
     servers: [
       {
@@ -36,7 +36,8 @@ const swaggerOptions = {
       },
       {
         name: 'Deliveries',
-        description: 'Creación, consulta, actualización y comprobantes de entregas'
+        description:
+          'Creación, consulta, tracking, actualización, eliminación y comprobantes de entregas'
       },
       {
         name: 'Mocks',

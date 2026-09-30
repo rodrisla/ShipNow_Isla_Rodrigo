@@ -60,6 +60,7 @@ describe('Endpoints de soporte', () => {
       '/api/users',
       '/api/users/{id}/documents',
       '/api/deliveries/{id}/receipts',
+      '/api/deliveries/tracking/{trackingCode}',
       '/api/orders',
       '/api/mocks/generateData',
       '/logger-test',

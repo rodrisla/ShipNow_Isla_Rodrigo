@@ -28,6 +28,21 @@ class DeliveryController {
     }
   }
 
+  async getByTrackingCode(req, res, next) {
+    try {
+      const delivery = await deliveryService.getByTrackingCode(
+        req.params.trackingCode
+      );
+
+      return res.status(200).json({
+        status: 'success',
+        data: { delivery }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async create(req, res, next) {
     try {
       const delivery = await deliveryService.create(req.body);
@@ -68,6 +83,16 @@ class DeliveryController {
         status: 'success',
         data: { delivery }
       });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async deleteById(req, res, next) {
+    try {
+      await deliveryService.deleteById(req.params.id);
+
+      return res.status(204).send();
     } catch (error) {
       next(error);
     }

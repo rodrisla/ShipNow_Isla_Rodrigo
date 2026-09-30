@@ -131,6 +131,59 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /api/deliveries/tracking/{trackingCode}:
+    get:
+      tags:
+        - Deliveries
+      summary: Consultar el tracking de una entrega
+      description: Devuelve el estado y los datos públicos de una entrega mediante su código de seguimiento.
+      parameters:
+        - name: trackingCode
+          in: path
+          required: true
+          description: Código de seguimiento generado al crear la entrega
+          schema:
+            type: string
+            pattern: '^SHP-[A-F0-9]{12}$'
+          example: SHP-7A91B3C8D4E2
+      responses:
+        '200':
+          description: Tracking obtenido correctamente
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    required:
+                      - data
+                    properties:
+                      data:
+                        type: object
+                        required:
+                          - delivery
+                        properties:
+                          delivery:
+                            $ref: '#/components/schemas/Delivery'
+        '400':
+          description: INVALID_TRACKING_CODE - El código no tiene un formato válido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: DELIVERY_NOT_FOUND - No existe una entrega con ese código
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: INTERNAL_SERVER_ERROR - Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /api/deliveries/{id}:
     get:
       tags:
@@ -163,6 +216,40 @@ paths:
                         properties:
                           delivery:
                             $ref: '#/components/schemas/Delivery'
+        '400':
+          description: INVALID_ID - El identificador no tiene un formato válido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: DELIVERY_NOT_FOUND - La entrega no existe
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: INTERNAL_SERVER_ERROR - Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - Deliveries
+      summary: Eliminar una entrega
+      description: Elimina la entrega y limpia sus comprobantes físicos para evitar archivos huérfanos.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Identificador de la entrega
+          schema:
+            $ref: '#/components/schemas/ObjectId'
+      responses:
+        '204':
+          description: Entrega eliminada correctamente
         '400':
           description: INVALID_ID - El identificador no tiene un formato válido
           content:

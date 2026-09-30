@@ -309,11 +309,18 @@ components:
       type: object
       required:
         - _id
+        - trackingCode
         - order
         - status
       properties:
         _id:
           $ref: '#/components/schemas/ObjectId'
+        trackingCode:
+          type: string
+          pattern: '^SHP-[A-F0-9]{12}$'
+          readOnly: true
+          description: Código público e inmutable para consultar el tracking
+          example: SHP-7A91B3C8D4E2
         order:
           oneOf:
             - $ref: '#/components/schemas/Order'

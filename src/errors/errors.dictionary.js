@@ -21,6 +21,10 @@ export const ERRORS_DICTIONARY = Object.freeze({
     statusCode: 404,
     message: 'No se encontró la entrega solicitada'
   },
+  [ERROR_CODES.INVALID_TRACKING_CODE]: {
+    statusCode: 400,
+    message: 'El código de seguimiento no tiene un formato válido'
+  },
   [ERROR_CODES.INVALID_ORDER_STATUS]: {
     statusCode: 400,
     message: 'El estado indicado no es válido para un pedido'

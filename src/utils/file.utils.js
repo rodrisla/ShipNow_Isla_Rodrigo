@@ -42,7 +42,8 @@ export const removeStoredFile = async (file) => {
   } catch (error) {
     if (error.code !== 'ENOENT') {
       logger.error(
-        `No se pudo eliminar ${file.filename}: ${error.stack ?? error.message}`
+        `No se pudo eliminar ${file.filename ?? file.storedName ?? file.path}: ` +
+          `${error.stack ?? error.message}`
       );
     }
   }
